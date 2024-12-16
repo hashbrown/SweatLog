@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">SweatLog</string>
+    <string name="feature_logs_title">Logs</string>
+    <string name="feature_settings_title">Settings</string>
+</resources>
