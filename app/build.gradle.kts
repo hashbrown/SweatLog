@@ -64,6 +64,7 @@ dependencies {
     implementation(libs.hilt.android)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.timber)
+    implementation(libs.androidx.lifecycle.process)
 
     ksp(libs.hilt.compiler)
 

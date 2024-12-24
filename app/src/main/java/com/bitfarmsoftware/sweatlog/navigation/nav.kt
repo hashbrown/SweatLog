@@ -20,14 +20,10 @@ import com.bitfarmsoftware.sweatlog.ui.SLAppState
 import kotlin.reflect.KClass
 import kotlinx.serialization.Serializable
 
+
 @Serializable
-data object LogsRoute
+data object SettingsRoute
 
-@Serializable data object LogsBaseRoute
-
-@Serializable data object SettingsRoute
-
-fun NavController.navigateToLogs(navOptions: NavOptions) = navigate(route = LogsRoute, navOptions)
 fun NavController.navigateToSettings(navOptions: NavOptions) = navigate(route = SettingsRoute, navOptions)
 
 enum class TopLevelDestination(
@@ -68,16 +64,13 @@ fun SLNavHost(
     val navController = appState.navController
     NavHost(
         navController = navController,
-        startDestination = LogsRoute,
+        startDestination = LogsBaseRoute,
         modifier = modifier,
     ) {
-        composable<LogsRoute> {
-            LogsScreen(
-                onShowSnackbar = onShowSnackbar,
-//                onLogClick = TODO(),
-                modifier = modifier
-            )
-        }
+        logsSection(
+            navController::navigateToLog,
+            modifier
+        )
         composable<SettingsRoute> {
             DevicesScreen(
                 onShowSnackbar = onShowSnackbar,

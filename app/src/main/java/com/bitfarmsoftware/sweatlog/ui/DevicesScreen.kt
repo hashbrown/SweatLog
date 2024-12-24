@@ -3,7 +3,6 @@ package com.bitfarmsoftware.sweatlog.ui
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -11,13 +10,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -26,6 +23,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,14 +37,14 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bitfarmsoftware.sweatlog.R
+import com.bitfarmsoftware.sweatlog.data.ble.BleDeviceResource
 import com.bitfarmsoftware.sweatlog.model.Device
+import com.bitfarmsoftware.sweatlog.model.SavedDevice
 import com.bitfarmsoftware.sweatlog.ui.theme.SweatLogTheme
-import timber.log.Timber
 
 
 @Composable
 fun DevicesScreen(
-//    onLogClick: (String) -> Unit,
     onShowSnackbar: suspend (String, String?) -> Boolean,
     modifier: Modifier = Modifier,
     viewModel: DevicesViewModel = hiltViewModel(),
@@ -56,6 +54,7 @@ fun DevicesScreen(
     val availableDevicesUiState by viewModel.availableDevicesState.collectAsStateWithLifecycle()
 
     DevicesScreen(
+        viewModel::connectDevice,
         myDevicesUiState,
         availableDevicesUiState
     )
@@ -63,6 +62,7 @@ fun DevicesScreen(
 
 @Composable
 internal fun DevicesScreen(
+    onConnectDeviceClick: (Device) -> Unit,
     savedDevicesState: DevicesUiState,
     availableDevicesState: DevicesUiState
 ) {
@@ -91,7 +91,7 @@ internal fun DevicesScreen(
             }
             is DevicesUiState.Success -> {
                 items((savedDevicesState as DevicesUiState.Success).devices) { device ->
-                    DeviceCard(device = device)
+                    DeviceCard(device = device, onConnectDeviceClick)
                 }
             }
         }
@@ -125,7 +125,7 @@ internal fun DevicesScreen(
             }
             is DevicesUiState.Success -> {
                 items((availableDevicesState as DevicesUiState.Success).devices) { device ->
-                    DeviceCard(device = device)
+                    DeviceCard(device = device, onConnectDeviceClick)
                 }
             }
         }
@@ -133,7 +133,10 @@ internal fun DevicesScreen(
 }
 
 @Composable
-fun DeviceCard(device: Device) {
+fun DeviceCard(
+    device: Device,
+    onConnectDeviceClick: (Device) -> Unit,
+) {
     Row(modifier = Modifier
         .padding(all = 8.dp)
         .fillMaxWidth(),
@@ -200,8 +203,18 @@ fun DeviceCard(device: Device) {
 
         var isConnected by remember { mutableStateOf(false) }
 
+        if (device is BleDeviceResource) {
+            val connectionState by device.connected.collectAsState()
+            isConnected = connectionState
+        }
+
+        val onConnectClick: (Device) -> Unit = when(device) {
+            is BleDeviceResource -> {{onConnectDeviceClick(device)}}
+            else -> {{}}
+        }
+
         TextButton(
-            onClick = { isConnected = !isConnected },
+            onClick = {onConnectClick(device)},
             modifier = Modifier.align(Alignment.CenterVertically)
         ) {
             Text(
@@ -226,11 +239,12 @@ fun PreviewDeviceCard() {
     SweatLogTheme {
         Surface {
             DeviceCard(
-                Device(
+                SavedDevice(
                     name = "Cycle 1260Sc",
                     address = "123-123",
                     uuid = "123-345-ghjt"
-                )
+                ),
+                {device -> Unit }
             )
         }
     }

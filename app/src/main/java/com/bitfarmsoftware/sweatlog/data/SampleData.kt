@@ -1,6 +1,6 @@
 package com.bitfarmsoftware.sweatlog.data
 
-import com.bitfarmsoftware.sweatlog.model.Device
+import com.bitfarmsoftware.sweatlog.model.SavedDevice
 import com.bitfarmsoftware.sweatlog.model.SweatLog
 
 /**
@@ -9,33 +9,33 @@ import com.bitfarmsoftware.sweatlog.model.SweatLog
 object SampleData {
     // Sample conversation data
     val devicesSample = listOf(
-        Device(
+        SavedDevice(
             "Device 1",
             "1111-1211 \n more lines \n more lines",
             uuid = "uuid-1111",
             autoConnect = true
         ),
-        Device(
+        SavedDevice(
             "Device 2",
             "2222-2222",
             uuid = "uuid-2222",
         ),
-        Device(
+        SavedDevice(
             "Device 3",
             "3333-3333",
             uuid = "uuid-3333",
         ),
-        Device(
+        SavedDevice(
             "Device 4",
             "444-444",
             uuid = "uuid-4444",
         ),
-        Device(
+        SavedDevice(
             "Device 5",
             "5555-555",
             uuid = "uuid-5555",
         ),
-        Device(
+        SavedDevice(
             "Device 6",
             "6666-66666",
             uuid = "uuid-6666",

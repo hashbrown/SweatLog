@@ -17,6 +17,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -37,8 +41,7 @@ import com.bitfarmsoftware.sweatlog.model.SweatLog
 
 @Composable
 fun LogsScreen(
-//    onLogClick: (String) -> Unit,
-    onShowSnackbar: suspend (String, String?) -> Boolean,
+    onLogClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LogsViewModel = hiltViewModel(),
     ) {
@@ -47,8 +50,7 @@ fun LogsScreen(
     
     LogsScreen(
         uiState,
-        onShowSnackbar,
-//        onLogClick,
+        onLogClick,
         modifier
         )
 }
@@ -56,8 +58,7 @@ fun LogsScreen(
 @Composable
 internal fun LogsScreen(
     uiState: LogsUiState,
-    onShowSnackbar: suspend (String, String?) -> Boolean,
-//    onLogClick: (String) -> Unit,
+    onLogClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn {
@@ -68,15 +69,17 @@ internal fun LogsScreen(
                     items = uiState.logs,
                     key = { it.id },
                 ) { sweatLog ->
-                    LogCard(sweatLog)
+                    LogCard(sweatLog, onLogClick)
                 }
             }
         }
     }
+    MyFloatingActionButton(onClick = {onLogClick("")})
 }
 
 @Composable
-fun LogCard(log: SweatLog) {
+fun LogCard(log: SweatLog,
+            onLogClick: (String) -> Unit) {
     Row(modifier = Modifier
         .padding(all = 8.dp)
         .fillMaxWidth(),
@@ -106,7 +109,8 @@ fun LogCard(log: SweatLog) {
         )
 
         Column(
-            modifier = Modifier.clickable { isExpanded = !isExpanded }
+            modifier = Modifier
+                .clickable { isExpanded = !isExpanded }
                 .weight(1f),
         ) {
             Text(
@@ -134,5 +138,20 @@ fun LogCard(log: SweatLog) {
                 )
             }
         }
+    }
+}
+
+@Composable
+fun MyFloatingActionButton(onClick: () -> Unit) {
+    FloatingActionButton(
+        onClick = onClick,
+        shape = CircleShape, // Adjust the shape as needed
+        containerColor = MaterialTheme.colorScheme.primary, // Adjust the background color as needed
+        contentColor = MaterialTheme.colorScheme.onPrimary, // Adjust the content color as needed
+        modifier = Modifier
+            .size(56.dp)
+            .padding(8.dp),
+    ) {
+        Icon(Icons.Filled.Add, "Start Log")
     }
 }

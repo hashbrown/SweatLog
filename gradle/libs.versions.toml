@@ -16,6 +16,7 @@ espressoCore = "3.6.1"
 hilt = "2.52"
 hiltNavCompose = "1.2.0"
 timber="5.0.1"
+lifecycleProcess = "2.8.7"
 
 [libraries]
 accompanist-permissions = {group="com.google.accompanist", name="accompanist-permissions", version.ref="accompanist"}
@@ -47,6 +48,7 @@ androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "j
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+androidx-lifecycle-process = { group = "androidx.lifecycle", name = "lifecycle-process", version.ref = "lifecycleProcess" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -1,6 +1,7 @@
 package com.bitfarmsoftware.sweatlog.data
 
 import com.bitfarmsoftware.sweatlog.model.Device
+import com.bitfarmsoftware.sweatlog.model.SavedDevice
 import com.bitfarmsoftware.sweatlog.model.UserData
 import kotlinx.coroutines.flow.Flow
 
