@@ -3,23 +3,14 @@ package com.bitfarmsoftware.sweatlog.data.ble
 import android.annotation.SuppressLint
 import android.content.Context
 import androidx.bluetooth.BluetoothLe
-import androidx.bluetooth.GattClientScope
-import com.bitfarmsoftware.sweatlog.model.SavedDevice
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
@@ -43,12 +34,16 @@ class RemoteDevicesDataSource @Inject constructor(
     // The UI collects from this StateFlow to get its state updates
     val availableDevices: SharedFlow<BleDeviceResource> = _availableDevices
 
+    private val _scanning = MutableSharedFlow<Boolean>(replay = 1)
+    val scanning: SharedFlow<Boolean> = _scanning
+
     private var scanJob: Job? = null
 
     @SuppressLint("MissingPermission")
     suspend fun scanDevices() {
         val coroutineScope = CoroutineScope(coroutineContext)
         scanJob = coroutineScope.launch {
+            _scanning.emit(true)
             ble.scan()
 //                .onEach { Timber.d("Raw scan result: ${it.device.name}") }
                 .filter { it.device.name != null }
@@ -66,9 +61,10 @@ class RemoteDevicesDataSource @Inject constructor(
         }
 
         coroutineScope.launch {
-            delay(10_000)
+            delay(30_000)
             Timber.i("Cancelling Scan Job")
             scanJob?.cancel()
+            _scanning.emit(false)
         }
     }
 
@@ -78,8 +74,12 @@ class RemoteDevicesDataSource @Inject constructor(
         ble.connectGatt(device.bleDevice) {
             device.connected(this, coroutineScope)
             _connectedDevices.emit(device)
-
-            awaitCancellation()
+            try {
+                awaitCancellation()
+            } finally {
+                Timber.i("connectDevice coroutine is cancelled")
+                device.disconnected()
+            }
         }
     }
 

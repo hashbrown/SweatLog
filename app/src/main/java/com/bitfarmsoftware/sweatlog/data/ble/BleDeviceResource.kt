@@ -46,7 +46,11 @@ class BleDeviceResource(val bleDevice: BluetoothDevice,
         Timber.i("Device connected: ${this.name}")
         gattClient = gattClientScope
         connected.update {true}
-        connectBikeData(gattClient, coroutineScope)
+//        coroutineScope.launch {
+//            startSession()
+//        }
+
+        connectBikeData()
 
 //        logGattInfo(gattClient, coroutineScope)
     }
@@ -56,20 +60,62 @@ class BleDeviceResource(val bleDevice: BluetoothDevice,
         connected.update {false}
     }
 
+    suspend fun startSession() {
+        Timber.i("Starting Session")
+         val fmService = gattClient.getService(GattServices.FITNESS_MACHINE.uuid())
+         if (fmService != null){
+             val fmcp = fmService.getCharacteristic(GattCharacteristics.FITNESS_MACHINE_CONTROL_POINT.uuid())
+             if(fmcp != null) {
+                 Timber.i("Requesting Reset")
+                 val resetResult = gattClient.writeCharacteristic(fmcp, "0x01".hexStringToByteArray())
+                 Timber.i("Requesting Start")
+                 // send "start" command
+                 val startResult = gattClient.writeCharacteristic(fmcp, "0x07".hexStringToByteArray())
+                 Timber.i("Session Started")
+                 connectBikeData()
+
+//                 gattClient.subscribeToCharacteristic(fmcp)
+//                 Timber.i("Requesting Control")
+//                 val ctrlResult = gattClient.writeCharacteristic(fmcp, "0x00".hexStringToByteArray())
+//                 if (ctrlResult.isSuccess) {
+//                     // send reset command
+//                     Timber.i("Requesting Reset")
+//                     val resetResult = gattClient.writeCharacteristic(fmcp, "0x01".hexStringToByteArray())
+//                     if (resetResult.isSuccess){
+//                         Timber.i("Requesting Start")
+//                         // send "start" command
+//                         val startResult = gattClient.writeCharacteristic(fmcp, "0x07".hexStringToByteArray())
+//                         if (startResult.isSuccess){
+//                             Timber.i("Session Started")
+//                             connectBikeData()
+//                         } else {
+//                             Timber.w("Failed to start session")
+//                         }
+//                     } else {
+//                         Timber.w("Failed to reset session")
+//                     }
+//                 } else {
+//                     Timber.w("Failed to request control for starting session")
+//                 }
+             } else {
+                 Timber.w("Could not get Fitness Machine Control Point Characteristic")
+             }
+         } else {
+             Timber.w("StartSession: Cannot get Fitness Machine Service")
+         }
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
-    private fun connectBikeData(scope: GattClientScope, coroutineScope: CoroutineScope) {
-        coroutineScope.launch {
-            _bikeData.value = scope.getService(GattServices.FITNESS_MACHINE.uuid())
-                    ?.getCharacteristic(GattCharacteristics.INDOOR_BIKE_DATA.uuid())
-                    ?.let { bikeCharacteristic ->
-                        Timber.i("Found Bike Characteristic, subscribing")
-                        gattClient.subscribeToCharacteristic(
-                            bikeCharacteristic
-                        )
-                    } ?: emptyFlow() // Return an empty flow if characteristic is null
-
-        }
-
+    private fun connectBikeData() {
+        _bikeData.value = gattClient.getService(GattServices.FITNESS_MACHINE.uuid())
+                ?.getCharacteristic(GattCharacteristics.INDOOR_BIKE_DATA.uuid())
+                ?.let { bikeCharacteristic ->
+                    Timber.i("Found Bike Characteristic, subscribing")
+                    gattClient.subscribeToCharacteristic(
+                        bikeCharacteristic
+                    )
+                        .onEach { Timber.i("Raw BikeData:: ${it.toHexString()}") }
+                } ?: emptyFlow() // Return an empty flow if characteristic is null
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)

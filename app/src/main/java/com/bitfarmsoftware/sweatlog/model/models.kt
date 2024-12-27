@@ -4,7 +4,8 @@ import kotlinx.coroutines.flow.Flow
 
 data class SweatLog(
     val id: String,
-    val title: String
+    val title: String,
+    val data: LogData
 )
 
 data class LogData(
@@ -12,7 +13,7 @@ data class LogData(
     val avgSpeed: Double? = null,
     val cadence: Double? = null,
     val avgCadence: Double? = null,
-    val distance: UInt? = null,
+    val distance: Double? = null,
     val resistance:Short? = null,
     val power: Int? = null,
     val avgPower: Int? = null,

@@ -9,6 +9,7 @@ object GattServices {
 
 object GattCharacteristics {
     const val INDOOR_BIKE_DATA = "00002ad2-0000-1000-8000-00805f9b34fb"
+    const val FITNESS_MACHINE_CONTROL_POINT = "00002ad9-0000-1000-8000-00805f9b34fb"
 }
 
 fun String.uuid(): UUID { return UUID.fromString(this)}
