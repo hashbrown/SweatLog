@@ -1,7 +1,7 @@
 package com.bitfarmsoftware.sweatlog.data
 
 import com.bitfarmsoftware.sweatlog.data.ble.hexStringToByteArray
-import com.bitfarmsoftware.sweatlog.model.LogData
+import com.bitfarmsoftware.sweatlog.model.TrainingData
 import com.bitfarmsoftware.sweatlog.model.SavedDevice
 import com.bitfarmsoftware.sweatlog.model.SweatLog
 
@@ -48,22 +48,22 @@ object SampleData {
         SweatLog(
             "111",
             "First Workout",
-            LogData()
+            TrainingData()
         ),
         SweatLog(
             "222",
             "Second Workout",
-            LogData()
+            TrainingData()
         ),
         SweatLog(
             "333",
             "Third Workout",
-            LogData()
+            TrainingData()
         ),
         SweatLog(
             "444",
             "Fourth Workout",
-            LogData()
+            TrainingData()
         ),
     )
 

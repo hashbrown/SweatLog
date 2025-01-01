@@ -4,7 +4,7 @@ import timber.log.Timber
 
 private const val METERS_PER_MILE = 1609.344
 
-fun ByteArray.toLogData(): LogData {
+fun ByteArray.toTrainingData(): TrainingData {
     var speed: Double? = null
     var avgSpeed: Double? = null
     var cadence: Double? = null
@@ -23,7 +23,7 @@ fun ByteArray.toLogData(): LogData {
 
     if (this.size < 2) {
         Timber.e("Data too short to parse flags")
-        return LogData()
+        return TrainingData()
     }
 
     val flagsStr =  StringBuilder()
@@ -149,7 +149,7 @@ fun ByteArray.toLogData(): LogData {
     if (flags and 0x200 != 0) {
         if (this.size >= offset + 1) {
             heartRate = (this[offset].toInt() and 0xFF).toUShort()
-            offset += 2
+            offset += 1
         }
     }
 
@@ -184,7 +184,7 @@ fun ByteArray.toLogData(): LogData {
 
     Timber.i("RECORD: Bytes(${this.size}) Flags{${flagsStr}}")
 
-    return LogData(
+    return TrainingData(
         speed,
         avgSpeed,
         cadence,

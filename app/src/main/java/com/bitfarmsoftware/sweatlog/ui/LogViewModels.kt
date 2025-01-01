@@ -8,10 +8,10 @@ import com.bitfarmsoftware.sweatlog.data.DevicesRepository
 import com.bitfarmsoftware.sweatlog.data.LogsRepository
 import com.bitfarmsoftware.sweatlog.data.SampleData
 import com.bitfarmsoftware.sweatlog.data.SampleData.logsSample
-import com.bitfarmsoftware.sweatlog.model.LogData
+import com.bitfarmsoftware.sweatlog.model.TrainingData
 import com.bitfarmsoftware.sweatlog.model.SweatLog
 import com.bitfarmsoftware.sweatlog.model.display
-import com.bitfarmsoftware.sweatlog.model.toLogData
+import com.bitfarmsoftware.sweatlog.model.toTrainingData
 import com.bitfarmsoftware.sweatlog.navigation.LogRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -26,11 +26,10 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import timber.log.Timber
 import javax.inject.Inject
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
 
 @HiltViewModel
 class LogsViewModel @Inject constructor(
+    logsRepository: LogsRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -65,7 +64,7 @@ class LogViewModel @Inject constructor(
     val uiState: StateFlow<LogUiState> = devicesRepository.connectedDevice
         .onEach { device -> Timber.i("ViewModel flow connected device ${device.connected}") }
         .flatMapLatest { device ->
-            logsRepository.observeLogData(device)
+            devicesRepository.startTraining(device)
                 .map { logData ->
                     Timber.i("ViewModel recvd LogData: $logData")
                     LogUiState.Success(logData.display())
@@ -97,7 +96,7 @@ class FakeLogViewModel @Inject constructor(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<LogUiState> = SampleData.bikeData.asFlow()
-        .map { it.toLogData()}
+        .map { it.toTrainingData()}
         .map { logData ->
             Timber.i("ViewModel recvd LogData: $logData")
             LogUiState.Success(logData.display())
@@ -128,7 +127,7 @@ data class LogDataView(
     val remainingTime: String = ""
 )
 
-fun LogData.display(): LogDataView {
+fun TrainingData.display(): LogDataView {
 
     return LogDataView (
         speed = this.speed?.display(1)?:0.toString(),

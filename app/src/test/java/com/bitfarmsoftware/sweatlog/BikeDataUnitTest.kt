@@ -1,7 +1,7 @@
 package com.bitfarmsoftware.sweatlog
 
 import com.bitfarmsoftware.sweatlog.data.ble.hexStringToByteArray
-import com.bitfarmsoftware.sweatlog.model.toLogData
+import com.bitfarmsoftware.sweatlog.model.toTrainingData
 import org.junit.Test
 
 import org.junit.Assert.*
@@ -16,7 +16,7 @@ class BikeDataUnitTest {
     fun parses_indoor_bike_data() {
         val hexStr = "740977054C0061000005001A0000000000001A00"
         val bytes = hexStr.hexStringToByteArray()
-        val logData = bytes.toLogData()
+        val logData = bytes.toTrainingData()
         assertEquals(5.toShort(), logData.resistance)
 
     }

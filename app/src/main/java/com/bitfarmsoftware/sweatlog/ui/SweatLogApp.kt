@@ -131,11 +131,7 @@ internal fun SLAppView(
                     }
                 )
             },
-//            floatingActionButtonPosition = FabPosition. End,
-//            floatingActionButton = {
-//                ExtendedFloatingActionButton(onClick = { /* fab click handler */ })
-//                { Text("Inc") }
-//            },
+
         ) { padding ->
             Column(
                 Modifier
@@ -148,29 +144,6 @@ internal fun SLAppView(
                         ),
                     ),
             ) {
-//                // Show the top app bar on top level destinations.
-//                val destination = appState.currentTopLevelDestination
-//                var shouldShowTopAppBar = false
-//
-//                if (destination != null) {
-//                    shouldShowTopAppBar = true
-//                    NiaTopAppBar(
-//                        titleRes = destination.titleTextId,
-//                        navigationIcon = NiaIcons.Search,
-//                        navigationIconContentDescription = stringResource(
-//                            id = settingsR.string.feature_settings_top_app_bar_navigation_icon_description,
-//                        ),
-//                        actionIcon = NiaIcons.Settings,
-//                        actionIconContentDescription = stringResource(
-//                            id = settingsR.string.feature_settings_top_app_bar_action_icon_description,
-//                        ),
-//                        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-//                            containerColor = Color.Transparent,
-//                        ),
-//                        onActionClick = { onTopAppBarActionClick() },
-//                        onNavigationClick = { appState.navigateToSearch() },
-//                    )
-//                }
 
                 Box(
                 ) {

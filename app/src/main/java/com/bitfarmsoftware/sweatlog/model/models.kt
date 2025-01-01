@@ -1,14 +1,12 @@
 package com.bitfarmsoftware.sweatlog.model
 
-import kotlinx.coroutines.flow.Flow
-
 data class SweatLog(
     val id: String,
     val title: String,
-    val data: LogData
+    val data: TrainingData
 )
 
-data class LogData(
+data class TrainingData(
     val speed: Double? = null,
     val avgSpeed: Double? = null,
     val cadence: Double? = null,

@@ -1,5 +1,6 @@
 package com.bitfarmsoftware.sweatlog
 
+import android.content.Intent
 import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -38,6 +39,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import com.bitfarmsoftware.sweatlog.service.BLEDeviceServiceImpl
 import com.bitfarmsoftware.sweatlog.ui.SLApp
 import com.bitfarmsoftware.sweatlog.ui.rememberSLAppState
 import com.bitfarmsoftware.sweatlog.ui.theme.SweatLogTheme
@@ -50,12 +53,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-       Timber.i("In MainActivity")
+       val serviceIntent = Intent(this, BLEDeviceServiceImpl::class.java)
+       ContextCompat.startForegroundService(this, serviceIntent)
 
         setContent {
             val appState = rememberSLAppState()
             SweatLogTheme {
-                Timber.i("SLApp")
                 SLApp(appState)
             }
         }

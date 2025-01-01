@@ -26,14 +26,14 @@ import javax.inject.Inject
 class DevicesViewModel @Inject constructor(
     private val devicesRepository: DevicesRepository,
     savedStateHandle: SavedStateHandle,
-    private val application: Application
 ) : ViewModel() {
 
+
+
     init {
+        Timber.i("Loading DevicesViewModel")
         scanForDevices()
     }
-
-    private val appLifeCycleOwner = ProcessLifecycleOwner.get()
 
     val myDevicesState: StateFlow<DevicesUiState> =
         devicesRepository.savedDevices
@@ -70,7 +70,7 @@ class DevicesViewModel @Inject constructor(
         when (device) {
             is BleDeviceResource ->
                 // Use lifecycleScope for the Application instead of viewModelScope
-                appLifeCycleOwner.lifecycleScope.launch {
+                viewModelScope.launch {
                     devicesRepository.connectDevice(device)
                 }
             is SavedDevice -> Timber.i("Ignoring request to connect to invalid device: ${device.name}")

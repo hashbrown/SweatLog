@@ -3,25 +3,19 @@ package com.bitfarmsoftware.sweatlog.data.ble
 import androidx.bluetooth.BluetoothDevice
 import androidx.bluetooth.GattClientScope
 import androidx.bluetooth.GattService
-import androidx.compose.runtime.collectAsState
 import com.bitfarmsoftware.sweatlog.data.ble.reference.AllGattCharacteristics
 import com.bitfarmsoftware.sweatlog.data.ble.reference.AllGattServices
 import com.bitfarmsoftware.sweatlog.data.ble.reference.GattCharacteristics
 import com.bitfarmsoftware.sweatlog.data.ble.reference.GattServices
 import com.bitfarmsoftware.sweatlog.data.ble.reference.uuid
 import com.bitfarmsoftware.sweatlog.model.Device
-import com.bitfarmsoftware.sweatlog.model.SavedDevice
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.flow.flatMapConcat
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -34,28 +28,22 @@ class BleDeviceResource(val bleDevice: BluetoothDevice,
 
     var connected = MutableStateFlow<Boolean>(false)
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val bikeData: Flow<ByteArray> get() = _bikeData.flatMapLatest { it } // Automatically switch flows
     private val _bikeData = MutableStateFlow<Flow<ByteArray>>(emptyFlow())
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val bikeData: Flow<ByteArray> = _bikeData.flatMapLatest { it } // Automatically switch flows
 
     private var gattServices = emptyList<GattService>()
 
     private lateinit var gattClient: GattClientScope
 
-    fun connected(gattClientScope: GattClientScope, coroutineScope: CoroutineScope) {
+    fun onConnected(gattClientScope: GattClientScope, coroutineScope: CoroutineScope) {
         Timber.i("Device connected: ${this.name}")
         gattClient = gattClientScope
         connected.update {true}
-//        coroutineScope.launch {
-//            startSession()
-//        }
 
-        connectBikeData()
-
-//        logGattInfo(gattClient, coroutineScope)
     }
 
-    fun disconnected() {
+    fun onDisconnected() {
         Timber.i("Device disconnected: ${this.name}")
         connected.update {false}
     }
@@ -66,37 +54,14 @@ class BleDeviceResource(val bleDevice: BluetoothDevice,
          if (fmService != null){
              val fmcp = fmService.getCharacteristic(GattCharacteristics.FITNESS_MACHINE_CONTROL_POINT.uuid())
              if(fmcp != null) {
-                 Timber.i("Requesting Reset")
-                 val resetResult = gattClient.writeCharacteristic(fmcp, "0x01".hexStringToByteArray())
+//                 Timber.i("Requesting Reset")
+//                 val resetResult = gattClient.writeCharacteristic(fmcp, "0x01".hexStringToByteArray())
                  Timber.i("Requesting Start")
                  // send "start" command
                  val startResult = gattClient.writeCharacteristic(fmcp, "0x07".hexStringToByteArray())
                  Timber.i("Session Started")
                  connectBikeData()
 
-//                 gattClient.subscribeToCharacteristic(fmcp)
-//                 Timber.i("Requesting Control")
-//                 val ctrlResult = gattClient.writeCharacteristic(fmcp, "0x00".hexStringToByteArray())
-//                 if (ctrlResult.isSuccess) {
-//                     // send reset command
-//                     Timber.i("Requesting Reset")
-//                     val resetResult = gattClient.writeCharacteristic(fmcp, "0x01".hexStringToByteArray())
-//                     if (resetResult.isSuccess){
-//                         Timber.i("Requesting Start")
-//                         // send "start" command
-//                         val startResult = gattClient.writeCharacteristic(fmcp, "0x07".hexStringToByteArray())
-//                         if (startResult.isSuccess){
-//                             Timber.i("Session Started")
-//                             connectBikeData()
-//                         } else {
-//                             Timber.w("Failed to start session")
-//                         }
-//                     } else {
-//                         Timber.w("Failed to reset session")
-//                     }
-//                 } else {
-//                     Timber.w("Failed to request control for starting session")
-//                 }
              } else {
                  Timber.w("Could not get Fitness Machine Control Point Characteristic")
              }

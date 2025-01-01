@@ -11,6 +11,10 @@ import javax.inject.Inject
 
 class LocalUserDataRepository @Inject constructor (datastore: SLDataStore): UserDataRepository {
 
+    init {
+        Timber.i("Initializing LocalUserDataRepo")
+    }
+
     private val savedDevices = mutableSetOf<SavedDevice>()
 
     override val userData: Flow<UserData> =
