@@ -1,5 +1,6 @@
 package com.bitfarmsoftware.sweatlog.ui
 
+import android.os.Build
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -32,7 +33,12 @@ import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
@@ -42,6 +48,7 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
+import com.bitfarmsoftware.sweatlog.data.UserDataRepository
 import com.bitfarmsoftware.sweatlog.navigation.SLNavHost
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
@@ -56,13 +63,18 @@ fun SLApp(
     modifier: Modifier = Modifier,
 ) {
 
-    val permissionsState = rememberMultiplePermissionsState(
-        permissions = listOf(
-            android.Manifest.permission.ACCESS_FINE_LOCATION,
-            android.Manifest.permission.BLUETOOTH_SCAN,
-            android.Manifest.permission.BLUETOOTH_CONNECT
-        )
+    val permissions = listOf(
+        android.Manifest.permission.ACCESS_FINE_LOCATION,
+        android.Manifest.permission.BLUETOOTH_SCAN,
+        android.Manifest.permission.BLUETOOTH_CONNECT
+
     )
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        permissions + android.Manifest.permission.POST_NOTIFICATIONS
+    }
+
+    val permissionsState = rememberMultiplePermissionsState(permissions)
 
     when {
         permissionsState.allPermissionsGranted -> {
@@ -93,6 +105,19 @@ internal fun SLAppView(
     val currentDestination = appState.currentDestination
     val snackbarHostState = remember { SnackbarHostState() }
 
+    var showSettingsDialog by rememberSaveable { mutableStateOf(false) }
+    val savedDevices = appState.userData.savedDevices
+    showSettingsDialog = (savedDevices.isEmpty())
+
+    Timber.i("Composing SLAppView, savedDevices=${savedDevices.isNotEmpty()}, showSettingDialog=${showSettingsDialog}")
+
+
+    if (showSettingsDialog) {
+        FindDeviceDialog(
+            onDismiss = { showSettingsDialog = false },
+        )
+    }
+
 
     NavigationSuiteScaffold(
         navigationSuiteItems = {
@@ -104,7 +129,7 @@ internal fun SLAppView(
                     onClick = { appState.navigateToTopLevelDestination(destination) },
                     icon = {
                         Icon(
-                            imageVector = destination.unselectedIcon,
+                            imageVector = if (selected) destination.selectedIcon else destination.unselectedIcon,
                             contentDescription = null,
                         )
                     },
@@ -123,12 +148,7 @@ internal fun SLAppView(
             snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 TopAppBar(
-                    title = { Text("Simple Scaffold Screen") },
-                    navigationIcon = {
-                        IconButton(onClick = { /* "Open nav drawer" */ }) {
-                            Icon(Icons.Filled.Menu, contentDescription = "Localized description")
-                        }
-                    }
+                    title = { Text("Sweat Logs") }
                 )
             },
 

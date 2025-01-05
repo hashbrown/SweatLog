@@ -16,9 +16,12 @@ import androidx.bluetooth.BluetoothLe
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
+import com.bitfarmsoftware.sweatlog.data.UserDataRepository
 import com.bitfarmsoftware.sweatlog.data.ble.BleDeviceResource
+import com.bitfarmsoftware.sweatlog.model.SavedDevice
 import com.bitfarmsoftware.sweatlog.model.TrainingData
 import com.bitfarmsoftware.sweatlog.model.toTrainingData
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -26,10 +29,17 @@ import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEmpty
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -45,23 +55,12 @@ interface BleDeviceService {
     suspend fun scanDevices()
     suspend fun stopScan()
     suspend fun connectDevice(device: BleDeviceResource)
+    suspend fun disconnectDevice(device: BleDeviceResource)
     suspend fun startTrainingSession(device: BleDeviceResource): Flow<TrainingData>
 
 }
 
 class BleDeviceServiceProvider @Inject constructor(private val context: Context) {
-
-//    val service: BleDeviceService by lazy {
-//        withContext(Dispatchers.Default) {
-//            Timber.i("Starting provider service field lazy init")
-//
-//            bindService().also {
-//                Timber.i("Finished provider service field lazy init")
-//            }
-//        }
-//    }
-//
-//    private val scope = CoroutineScope(Job())
 
     private lateinit var service: BleDeviceService
 
@@ -86,52 +85,12 @@ class BleDeviceServiceProvider @Inject constructor(private val context: Context)
             context.bindService(intent, conn, Context.BIND_AUTO_CREATE)
         }
     }
-
-
-//    sealed interface ServiceState {
-//        data object CONNECTING: ServiceState
-//        data object DISCONNECTED: ServiceState
-//        data class CONNECTED(val service:BleDeviceService): ServiceState
-//    }
-//
-//    private val _serviceState = MutableSharedFlow<ServiceState>(replay = 1)
-//    val serviceState: SharedFlow<ServiceState> = _serviceState
-//
-//    private val _service = MutableSharedFlow<BleDeviceService>(replay = 1)
-//    val service: SharedFlow<BleDeviceService> = _service
-
-
-//    /** Defines callbacks for service binding, passed to bindService().  */
-//    private val connection = object : ServiceConnection {
-//
-//        override fun onServiceConnected(className: ComponentName, service: IBinder) {
-//            // We've bound to LocalService, cast the IBinder and get LocalService instance.
-//            val binder = service as BLEDeviceServiceBinder
-//            scope.launch {
-//                _serviceState.emit(ServiceState.CONNECTED(binder.service))
-//            }
-//        }
-//
-//        override fun onServiceDisconnected(arg0: ComponentName) {
-//            scope.launch {
-//                _serviceState.emit(ServiceState.DISCONNECTED)
-//            }
-//        }
-//    }
-//
-//    init {
-//        Intent(context, BLEDeviceServiceImpl::class.java).also { intent ->
-//            context.bindService(intent, connection, Context.BIND_AUTO_CREATE)
-//        }
-//    }
-
-
 }
 
 data class BLEDeviceServiceBinder(val service: BleDeviceService): Binder()
 
 
-@Singleton
+@AndroidEntryPoint
 class BLEDeviceServiceImpl @Inject constructor() : Service(), BleDeviceService {
 
     companion object {
@@ -140,8 +99,11 @@ class BLEDeviceServiceImpl @Inject constructor() : Service(), BleDeviceService {
         private var isRunning = false // Singleton flag for the process lifetime
     }
 
-    private val _scanning = MutableSharedFlow<Boolean>(replay = 1)
-    override val scanning: SharedFlow<Boolean> = _scanning
+    @Inject
+    lateinit var userDataRepo: UserDataRepository
+
+    private val _scanning = MutableStateFlow<Boolean>(false)
+    override val scanning: StateFlow<Boolean> = _scanning
 
     private val _connectedDevice = MutableSharedFlow<BleDeviceResource>(replay = 1)
     override val connectedDevice: SharedFlow<BleDeviceResource> = _connectedDevice
@@ -151,8 +113,11 @@ class BLEDeviceServiceImpl @Inject constructor() : Service(), BleDeviceService {
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + Job())
     private lateinit var ble: BluetoothLe
-    private lateinit var bleDeviceResource: BleDeviceResource
+    private var bleDeviceResource: BleDeviceResource? = null
     private var scanJob: Job? = null
+    private var scanCancelJob: Job? = null
+    private var connectJob: Job? = null
+    private var autoconnectJob: Job? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -174,6 +139,10 @@ class BLEDeviceServiceImpl @Inject constructor() : Service(), BleDeviceService {
         startForeground()
         isRunning = true // Set the flag here
 
+        autoconnectJob = serviceScope.launch {
+            runAutoConnect()
+        }
+
         Timber.i("BLEDeviceService successfully started in foreground")
         return START_STICKY
     }
@@ -186,43 +155,42 @@ class BLEDeviceServiceImpl @Inject constructor() : Service(), BleDeviceService {
     @SuppressLint("MissingPermission")
     override suspend fun scanDevices() {
 
-        scanJob?.cancel()
-        scanJob = serviceScope.launch {
-            Timber.i("Starting scanner")
-            _scanning.emit(true)
-            ble.scan()
-//                .onEach { Timber.d("Raw scan result: ${it.device.name}") }
-                .filter { it.device.name != null }
-                .map { result ->
-                    BleDeviceResource(
-                        bleDevice = result.device,
-                        name = result.device.name!!,
-                        address = result.deviceAddress.address,
-                        uuid = result.device.id.toString(),
-                    )
-                }
-                .collect { device ->
-                    _availableDevices.emit(device) // Emit scan result
-                }
+        // always reset the cancel timer
+        scanCancelJob?.cancel()
+        if (_scanning.compareAndSet(false, true)) {
+            scanJob = serviceScope.launch {
+                Timber.i("Starting scanner")
+                ble.scan()
+    //                .onEach { Timber.d("Raw scan result: ${it.device.name}") }
+                    .filter { it.device.name != null }
+                    .map { result ->
+                        BleDeviceResource(
+                            bleDevice = result.device,
+                            name = result.device.name!!,
+                            address = result.deviceAddress.address,
+                            uuid = result.device.id.toString(),
+                        )
+                    }
+                    .collect { device ->
+                        _availableDevices.emit(device) // Emit scan result
+                    }
+            }
         }
-
-        serviceScope.launch {
-            delay(30_000)
-            Timber.i("Cancelling Scan Job")
-            scanJob?.cancel()
-            _scanning.emit(false)
-        }
+        cancelScan(30_000)
     }
 
     override suspend fun stopScan() {
-
+        Timber.i("Received StopScan request")
+        cancelScan(0)
     }
 
     @SuppressLint("MissingPermission")
     override suspend fun connectDevice(device: BleDeviceResource) {
-        if (!device.connected.value) {
-            serviceScope.launch {
+        if (!device.connected.value && connectJob == null) {
+            Timber.i("Connecting device ${device.name} addr=${device.address}")
+            connectJob = serviceScope.launch {
                 ble.connectGatt(device.bleDevice) {
+                    bleDeviceResource = device
                     device.onConnected(this, serviceScope)
                     _connectedDevice.emit(device)
                     updateNotification("Connected to ${device.name}")
@@ -231,32 +199,79 @@ class BLEDeviceServiceImpl @Inject constructor() : Service(), BleDeviceService {
                     } finally {
                         Timber.i("connectDevice coroutine is cancelled")
                         device.onDisconnected()
+                        bleDeviceResource = null
                     }
                 }
             }
+        } else {
+            Timber.i("Ignoring Connect for Connected device ${device.name}")
         }
+    }
+
+    override suspend fun disconnectDevice(device: BleDeviceResource) {
+        Timber.i("Disconnecting device ${device.name}")
+        connectJob?.cancel()
+        updateNotification("Waiting for connection...")
     }
 
     @SuppressLint("MissingPermission")
     override suspend fun startTrainingSession(device: BleDeviceResource): Flow<TrainingData> {
-        device.startSession()
-        return device.bikeData
-            .filter { it.isNotEmpty() }
-            .map { data -> data.toTrainingData() }
+        return withContext(serviceScope.coroutineContext) {
+            device.startSession()
+            device.bikeData
+                .filter { it.isNotEmpty() }
+                .map { data -> data.toTrainingData() }
+        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        if (::bleDeviceResource.isInitialized) {
-            bleDeviceResource.onDisconnected()
+        bleDeviceResource?.onDisconnected()
+    }
+
+    private suspend fun cancelScan(delayMs: Long) {
+        scanCancelJob?.cancel()
+        scanCancelJob = serviceScope.launch {
+            delay(delayMs)
+            Timber.i("Cancelling Scan Job")
+            scanJob?.cancel()
+            _scanning.value = false
         }
+    }
+
+    private suspend fun runAutoConnect() {
+        Timber.i("Invoked runAutoConnect()")
+        userDataRepo.userData
+            .map { it.savedDevices.filter{savedDevice -> savedDevice.autoConnect}}
+            .onEmpty {
+                Timber.i("No autoconnect devices found")
+                emptyFlow<List<SavedDevice>>()
+            }
+            .collect {
+                devices -> autoconnectDevice(devices.first())
+            }
+    }
+
+    private suspend fun autoconnectDevice(device: SavedDevice){
+
+        Timber.i("Attempting autoconnect for device ${device.name}")
+        scanDevices()
+        availableDevices
+            .filter{ scanDevice -> scanDevice.name == device.name
+                    && scanDevice.address == device.address}
+            .collect {
+                foundDevice -> connectDevice(foundDevice)
+            }.also {
+                Timber.i("Found device for autoconnect")
+                stopScan()
+            }
     }
 
 
     private fun startForeground() {
         try {
             val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("SweatLog BLE Service")
+                .setContentTitle("SweatLog App")
                 .setContentText("Waiting for connection...")
                 .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -277,8 +292,6 @@ class BLEDeviceServiceImpl @Inject constructor() : Service(), BleDeviceService {
                 Timber.e("Exception starting foreground! ", e)
             }
         }
-
-
     }
 
     /**
@@ -287,7 +300,7 @@ class BLEDeviceServiceImpl @Inject constructor() : Service(), BleDeviceService {
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "BLE Connection Service",
+            "Device Connection Service",
             NotificationManager.IMPORTANCE_LOW
         ).apply {
             description = "Handles BLE device connections and data collection"
@@ -303,7 +316,7 @@ class BLEDeviceServiceImpl @Inject constructor() : Service(), BleDeviceService {
     @SuppressLint("MissingPermission")
     private fun updateNotification(content: String) {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("SweatLog BLE Service")
+            .setContentTitle("SweatLog App")
             .setContentText(content)
             .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
             .setPriority(NotificationCompat.PRIORITY_LOW)

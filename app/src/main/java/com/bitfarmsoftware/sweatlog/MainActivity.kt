@@ -40,16 +40,21 @@ import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.bitfarmsoftware.sweatlog.data.UserDataRepository
 import com.bitfarmsoftware.sweatlog.service.BLEDeviceServiceImpl
 import com.bitfarmsoftware.sweatlog.ui.SLApp
 import com.bitfarmsoftware.sweatlog.ui.rememberSLAppState
 import com.bitfarmsoftware.sweatlog.ui.theme.SweatLogTheme
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-   override fun onCreate(savedInstanceState: Bundle?) {
+    @Inject
+    lateinit var userDataRepo: UserDataRepository
+
+    override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
@@ -57,10 +62,16 @@ class MainActivity : ComponentActivity() {
        ContextCompat.startForegroundService(this, serviceIntent)
 
         setContent {
-            val appState = rememberSLAppState()
+            val appState = rememberSLAppState(userDataRepo)
             SweatLogTheme {
                 SLApp(appState)
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        val serviceIntent = Intent(this, BLEDeviceServiceImpl::class.java)
+        stopService(serviceIntent)
     }
 }

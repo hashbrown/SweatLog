@@ -2,6 +2,7 @@ package com.bitfarmsoftware.sweatlog.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation.NavDestination
@@ -11,6 +12,9 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navOptions
+import com.bitfarmsoftware.sweatlog.data.UserDataRepository
+import com.bitfarmsoftware.sweatlog.model.SavedDevice
+import com.bitfarmsoftware.sweatlog.model.UserData
 import com.bitfarmsoftware.sweatlog.navigation.TopLevelDestination
 import com.bitfarmsoftware.sweatlog.navigation.navigateToLogs
 import com.bitfarmsoftware.sweatlog.navigation.navigateToSettings
@@ -19,6 +23,7 @@ import kotlinx.coroutines.flow.SharingStarted
 
 @Composable
 fun rememberSLAppState(
+    userDataRepo: UserDataRepository,
     coroutineScope: CoroutineScope = rememberCoroutineScope(),
     navController: NavHostController = rememberNavController(),
 ): SLAppState {
@@ -27,6 +32,7 @@ fun rememberSLAppState(
         coroutineScope,
     ) {
         SLAppState(
+            userDataRepository = userDataRepo,
             navController = navController,
             coroutineScope = coroutineScope,
         )
@@ -35,6 +41,7 @@ fun rememberSLAppState(
 
 
 class SLAppState(
+    val userDataRepository: UserDataRepository,
     val navController: NavHostController,
     coroutineScope: CoroutineScope
 ){
@@ -54,6 +61,12 @@ class SLAppState(
      * route.
      */
     val topLevelDestinations: List<TopLevelDestination> = TopLevelDestination.entries
+
+    val userData: UserData
+        @Composable get() {
+            return userDataRepository.userData.collectAsState(initial =
+                UserData(savedDevices = emptySet())).value
+        }
 
     /**
      * UI logic for navigating to a top level destination in the app. Top level destinations have

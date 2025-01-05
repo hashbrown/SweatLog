@@ -21,8 +21,11 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.reduce
+import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.stateIn
 import timber.log.Timber
 import javax.inject.Inject
@@ -34,9 +37,15 @@ class LogsViewModel @Inject constructor(
 ) : ViewModel() {
 
     // Backing property to avoid state updates from other classes
-    private val _uiState = MutableStateFlow(LogsUiState.Success(logsSample))
+//    private val _uiState = MutableStateFlow(LogsUiState.Success(logsSample))
     // The UI collects from this StateFlow to get its state updates
-    val uiState : StateFlow<LogsUiState> = _uiState
+    val uiState: StateFlow<LogsUiState> = flowOf(
+        LogsUiState.Success(SampleData.logsSample.map { it.display() }) // Transform all elements at once
+    ).stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = LogsUiState.Loading
+    )
 
 }
 
@@ -47,7 +56,7 @@ sealed interface LogsUiState {
         /**
          * The list of news resources contained in this feed.
          */
-        val logs: List<SweatLog>,
+        val logs: List<SweatLogView>,
     ) : LogsUiState
 }
 
@@ -66,7 +75,7 @@ class LogViewModel @Inject constructor(
         .flatMapLatest { device ->
             devicesRepository.startTraining(device)
                 .map { logData ->
-                    Timber.i("ViewModel recvd LogData: $logData")
+//                    Timber.i("ViewModel recvd LogData: $logData")
                     LogUiState.Success(logData.display())
                 }
         }
@@ -109,6 +118,12 @@ class FakeLogViewModel @Inject constructor(
         )
 }
 
+data class SweatLogView(
+    val id: String,
+    val title: String,
+    val logData: LogDataView
+)
+
 data class LogDataView(
     val speed: String = "",
     val avgSpeed: String = "",
@@ -127,6 +142,14 @@ data class LogDataView(
     val remainingTime: String = ""
 )
 
+fun SweatLog.display(): SweatLogView {
+    return SweatLogView (
+        id = this.id,
+        title = this.title,
+        logData = this.data.display()
+    )
+}
+
 fun TrainingData.display(): LogDataView {
 
     return LogDataView (
@@ -135,6 +158,7 @@ fun TrainingData.display(): LogDataView {
         distance = this.distance?.display(2)?:0.toString(),
         resistance = this.resistance.toString(),
         power = this.power.toString(),
+        avgPower = this.avgPower.toString(),
         totalEnergy = this.totalEnergy.toString(),
         heartrate = this.heartrate.toString(),
         elapsedTime = formatDuration(this.elapsedTime?.toInt()?:0),

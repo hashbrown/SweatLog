@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -52,7 +53,16 @@ internal fun LogScreen(
 
     ){
         when (uiState) {
-            LogUiState.Loading -> Unit
+            is LogUiState.Loading -> {
+                Box(modifier = Modifier.fillMaxHeight(),
+                    contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "Waiting for device",
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.displayMedium,
+                    )
+                }
+            }
             is LogUiState.Success -> {
                 Row(
                     modifier = Modifier.fillMaxWidth(),

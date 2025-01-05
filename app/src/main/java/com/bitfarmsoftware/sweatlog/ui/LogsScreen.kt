@@ -1,28 +1,26 @@
 package com.bitfarmsoftware.sweatlog.ui
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,12 +30,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bitfarmsoftware.sweatlog.R
-import com.bitfarmsoftware.sweatlog.model.SweatLog
+import com.bitfarmsoftware.sweatlog.data.SampleData
 
 @Composable
 fun LogsScreen(
@@ -61,27 +61,40 @@ internal fun LogsScreen(
     onLogClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    LazyColumn {
-        when (uiState) {
-            LogsUiState.Loading -> Unit
-            is LogsUiState.Success -> {
-                items(
-                    items = uiState.logs,
-                    key = { it.id },
-                ) { sweatLog ->
-                    LogCard(sweatLog, onLogClick)
+    Box(
+        modifier = Modifier.fillMaxHeight()
+//            .background(Color.Green)
+            .padding(horizontal = 4.dp)
+
+    ) {
+//        LazyColumn(modifier = Modifier.background(Color.Blue)){
+        LazyColumn(){
+            when (uiState) {
+                LogsUiState.Loading -> Unit
+                is LogsUiState.Success -> {
+                    items(
+                        items = uiState.logs,
+                        key = { it.id },
+                    ) { sweatLog ->
+                        LogCard(sweatLog, onLogClick)
+                    }
                 }
             }
         }
+        MyFloatingActionButton(
+            onClick = { onLogClick("") },
+            modifier = Modifier.align(Alignment.BottomEnd)
+        )
     }
-    MyFloatingActionButton(onClick = {onLogClick("")})
 }
 
 @Composable
-fun LogCard(log: SweatLog,
-            onLogClick: (String) -> Unit) {
+fun LogCard(log: SweatLogView,
+            onLogClick: (String) -> Unit
+) {
     Row(modifier = Modifier
         .padding(all = 8.dp)
+//        .background(Color.Yellow),
         .fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceAround) {
         Image(
@@ -99,18 +112,8 @@ fun LogCard(log: SweatLog,
         // Add a horizontal space between the image and the column
         Spacer(modifier = Modifier.width(8.dp))
 
-        // We keep track if the Device is expanded or not in this
-        // variable
-        var isExpanded by remember { mutableStateOf(false) }
-        // surfaceColor will be updated gradually from one color to the other
-        val surfaceColor by animateColorAsState(
-            if (isExpanded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
-            label = "AnimationState",
-        )
-
         Column(
             modifier = Modifier
-                .clickable { isExpanded = !isExpanded }
                 .weight(1f),
         ) {
             Text(
@@ -118,40 +121,47 @@ fun LogCard(log: SweatLog,
                 color = MaterialTheme.colorScheme.secondary,
                 style = MaterialTheme.typography.titleMedium
             )
-            Spacer(modifier = Modifier.height(4.dp))
+//            Spacer(modifier = Modifier.height(4.dp).background(Color.Red))
 
-            Surface(
-                shape = MaterialTheme.shapes.medium,
-                shadowElevation = 1.dp,
-                // surfaceColor color will be changing gradually from primary to surface
-                color = surfaceColor,
-                // animateContentSize will change the Surface size gradually
-                modifier = Modifier
-                    .animateContentSize()
-                    .padding(1.dp)
-            ) {
-                Text(
-                    text = "ID(${isExpanded}): ${log.id}",
+            Text(
+                    text = "time: ${log.logData.elapsedTime}  avg power: ${log.logData.avgPower}  calories: ${log.logData.totalEnergy}",
                     modifier = Modifier.padding(all = 4.dp),
-                    maxLines = if (isExpanded) Int.MAX_VALUE else 1,
                     style = MaterialTheme.typography.bodyMedium
                 )
-            }
+
         }
     }
 }
 
 @Composable
-fun MyFloatingActionButton(onClick: () -> Unit) {
+fun MyFloatingActionButton(
+    onClick: () -> Unit,
+    modifier: Modifier) {
     FloatingActionButton(
         onClick = onClick,
-        shape = CircleShape, // Adjust the shape as needed
+        shape = RoundedCornerShape(10.dp), // Adjust the shape as needed
         containerColor = MaterialTheme.colorScheme.primary, // Adjust the background color as needed
         contentColor = MaterialTheme.colorScheme.onPrimary, // Adjust the content color as needed
         modifier = Modifier
-            .size(56.dp)
-            .padding(8.dp),
+            .padding(horizontal = 16.dp, vertical = 24.dp).then(modifier),
     ) {
-        Icon(Icons.Filled.Add, "Start Log")
+//        Icon(Icons.Filled.Add, "Start Log")
+        Text(modifier = Modifier
+//            .size(56.dp)
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+            text = "Start Workout")
     }
+}
+
+@Preview
+@Composable
+fun PreviewLogsScreen() {
+
+    val sweatLogViews = SampleData.logsSample.map { it.display() }.toList()
+    val uiState = LogsUiState.Success(sweatLogViews)
+
+    LogsScreen(
+        uiState,
+        {}
+    )
 }

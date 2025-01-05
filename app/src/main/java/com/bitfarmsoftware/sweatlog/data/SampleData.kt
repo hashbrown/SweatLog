@@ -47,23 +47,23 @@ object SampleData {
     val logsSample = listOf(
         SweatLog(
             "111",
-            "First Workout",
-            TrainingData()
+            "12-06-2024",
+            TrainingData(elapsedTime = 1234U, avgPower = 180, totalEnergy = 234u)
         ),
         SweatLog(
-            "222",
-            "Second Workout",
-            TrainingData()
+            "2222",
+            "12-12-2024",
+            TrainingData(elapsedTime = 6345U, avgPower = 138, totalEnergy = 513u)
         ),
         SweatLog(
-            "333",
-            "Third Workout",
-            TrainingData()
+            "3333",
+            "12-15-2024",
+            TrainingData(elapsedTime = 345U, avgPower = 210, totalEnergy = 68u)
         ),
         SweatLog(
-            "444",
-            "Fourth Workout",
-            TrainingData()
+            "4444",
+            "12-24-2024",
+            TrainingData(elapsedTime = 2223U, avgPower = 165, totalEnergy = 436u)
         ),
     )
 
