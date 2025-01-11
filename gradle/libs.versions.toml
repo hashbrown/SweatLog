@@ -1,22 +1,26 @@
 [versions]
+activityCompose = "1.9.3"
 accompanist = "0.37.0"
 agp = "8.7.3"
 ble = "1.0.0-alpha02"
+composeBom = "2024.11.00"
+coreKtx = "1.15.0"
+health = "1.1.0-alpha10"
+hilt = "2.52"
+hiltNavCompose = "1.2.0"
 kotlin = "2.0.20"
 kotlinxSerializationJson = "1.7.3"
 ksp = "2.0.20-1.0.25"
-coreKtx = "1.15.0"
-navCompose = "2.8.4"
-activityCompose = "1.9.3"
-composeBom = "2024.11.00"
+lifecycleProcess = "2.8.7"
 lifecycleRuntimeKtx = "2.8.7"
+navCompose = "2.8.4"
+
+
 junit = "4.13.2"
 junitVersion = "1.2.1"
+kotlinxCoroutinesTest = "1.10.1"
 espressoCore = "3.6.1"
-hilt = "2.52"
-hiltNavCompose = "1.2.0"
 timber="5.0.1"
-lifecycleProcess = "2.8.7"
 
 [libraries]
 accompanist-permissions = {group="com.google.accompanist", name="accompanist-permissions", version.ref="accompanist"}
@@ -37,18 +41,22 @@ androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-hilt-nav = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref="hiltNavCompose" }
+health-connect = { group = "androidx.health.connect", name = "connect-client", version.ref = "health" }
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-android-testing = { group = "com.google.dagger", name = "hilt-android-testing", version.ref = "hilt" }
 hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
 
+# testing
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-lifecycle-process = { group = "androidx.lifecycle", name = "lifecycle-process", version.ref = "lifecycleProcess" }
+kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinxCoroutinesTest" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

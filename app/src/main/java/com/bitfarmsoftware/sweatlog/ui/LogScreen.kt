@@ -1,5 +1,6 @@
 package com.bitfarmsoftware.sweatlog.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,6 +19,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,7 +28,27 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import timber.log.Timber
+
+
+@Composable
+fun PermissionLauncher(viewModel: LogViewModel = hiltViewModel()) {
+    Timber.i("launcher contract=${viewModel.permissionLauncher}")
+    val launcher = rememberLauncherForActivityResult(viewModel.permissionLauncher) {
+        Timber.i("launch result=${it}")
+        viewModel.checkPermissions()
+    }
+
+    val currLifeCycleState = LocalLifecycleOwner.current.lifecycle.currentState
+    Timber.i("Pre-launch lifecycle state=${currLifeCycleState}")
+
+    LaunchedEffect(true) {
+        Timber.i("Launch lifecycle state=${currLifeCycleState}")
+        launcher.launch(viewModel.requiredPermissions)
+    }
+}
 
 @Composable
 fun LogScreen(
@@ -33,7 +56,7 @@ fun LogScreen(
     viewModel: LogViewModel = hiltViewModel(),
     ) {
 
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState2.collectAsStateWithLifecycle()
 
     LogScreen(
         uiState
@@ -43,7 +66,7 @@ fun LogScreen(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun LogScreen(
-    uiState: LogUiState,
+    uiState: LogUiState
 //    onShowSnackbar: suspend (String, String?) -> Boolean,
 //    onLogClick: (String) -> Unit,
  //   modifier: Modifier = Modifier,
@@ -52,8 +75,10 @@ internal fun LogScreen(
         modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 8.dp)
 
     ){
+
         when (uiState) {
             is LogUiState.Loading -> {
+                Timber.i("Re-compose with LOADING state")
                 Box(modifier = Modifier.fillMaxHeight(),
                     contentAlignment = Alignment.Center) {
                     Text(
@@ -63,7 +88,21 @@ internal fun LogScreen(
                     )
                 }
             }
+            is LogUiState.NeedsPermissions -> {
+                Timber.i("Re-compose with PERMISSIONS state")
+                Box(modifier = Modifier.fillMaxHeight(),
+                    contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "Configure HealthConnect",
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.displayMedium,
+                    )
+                }
+
+                PermissionLauncher()
+            }
             is LogUiState.Success -> {
+                Timber.i("Re-compose with SUCCESS state")
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly,

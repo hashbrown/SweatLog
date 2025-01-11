@@ -26,6 +26,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -73,7 +74,7 @@ class BleDeviceServiceProvider @Inject constructor(private val context: Context)
         val conn = object: ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
                 val binder = service as BLEDeviceServiceBinder
-                Timber.i("Resuming bindService coroutine")
+                Timber.i("Binder: onServiceConnected")
                 continuation.resume(binder.service)
             }
             override fun onServiceDisconnected(name: ComponentName?) {
@@ -216,17 +217,18 @@ class BLEDeviceServiceImpl @Inject constructor() : Service(), BleDeviceService {
 
     @SuppressLint("MissingPermission")
     override suspend fun startTrainingSession(device: BleDeviceResource): Flow<TrainingData> {
-        return withContext(serviceScope.coroutineContext) {
-            device.startSession()
+       return withContext(serviceScope.coroutineContext) {
+            device.tryStartSession()
             device.bikeData
-                .filter { it.isNotEmpty() }
-                .map { data -> data.toTrainingData() }
+            .filter { it.isNotEmpty() }
+            .map { data -> data.toTrainingData() }
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
         bleDeviceResource?.onDisconnected()
+        serviceScope.cancel("BLEService is being destroyed")
     }
 
     private suspend fun cancelScan(delayMs: Long) {

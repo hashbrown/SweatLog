@@ -7,16 +7,15 @@ import androidx.navigation.toRoute
 import com.bitfarmsoftware.sweatlog.data.DevicesRepository
 import com.bitfarmsoftware.sweatlog.data.LogsRepository
 import com.bitfarmsoftware.sweatlog.data.SampleData
-import com.bitfarmsoftware.sweatlog.data.SampleData.logsSample
-import com.bitfarmsoftware.sweatlog.model.TrainingData
+import com.bitfarmsoftware.sweatlog.data.ble.BleDeviceResource
 import com.bitfarmsoftware.sweatlog.model.SweatLog
+import com.bitfarmsoftware.sweatlog.model.TrainingData
 import com.bitfarmsoftware.sweatlog.model.display
 import com.bitfarmsoftware.sweatlog.model.toTrainingData
 import com.bitfarmsoftware.sweatlog.navigation.LogRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asFlow
@@ -24,9 +23,8 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.reduce
-import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -35,6 +33,7 @@ class LogsViewModel @Inject constructor(
     logsRepository: LogsRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
+
 
     // Backing property to avoid state updates from other classes
 //    private val _uiState = MutableStateFlow(LogsUiState.Success(logsSample))
@@ -46,6 +45,11 @@ class LogsViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = LogsUiState.Loading
     )
+
+    override fun onCleared() {
+        super.onCleared()
+        Timber.i("LogsViewModel Cleared")
+    }
 
 }
 
@@ -63,21 +67,74 @@ sealed interface LogsUiState {
 @HiltViewModel
 class LogViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    logsRepository: LogsRepository,
+    private val logsRepository: LogsRepository,
     devicesRepository: DevicesRepository,
 ) : ViewModel() {
 
+
     val logId = savedStateHandle.toRoute<LogRoute>().id
+
+
+    // wrap the connectedDevice flow to emit a WaitingToConnect state when no device is yet connected.
+    private val deviceState : StateFlow<DeviceState> = devicesRepository.connectedDevice
+        .onEach { device -> Timber.i("ViewModel flow connected device ${device.connected}") }
+        .map {
+            DeviceState.Connected(it)
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = DeviceState.WaitingToConnect,
+        )
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<LogUiState> = devicesRepository.connectedDevice
-        .onEach { device -> Timber.i("ViewModel flow connected device ${device.connected}") }
-        .flatMapLatest { device ->
-            devicesRepository.startTraining(device)
-                .map { logData ->
-//                    Timber.i("ViewModel recvd LogData: $logData")
-                    LogUiState.Success(logData.display())
+                .onEach { device -> Timber.i("ViewModel flow connected device ${device.connected}") }
+                .flatMapLatest { device ->
+                    devicesRepository.startTraining(device)
+                        .map { logData ->
+                            Timber.i("ViewModel recvd LogData: $logData")
+                            LogUiState.Success(logData.display())
+                        }
                 }
+                .stateIn(
+                    scope = viewModelScope,
+                    started = SharingStarted.WhileSubscribed(5_000),
+                    initialValue = LogUiState.Loading,
+                )
+
+    /**
+     * This should result in 3 states for the UI:
+     * 1) NeedsPermissions - regardless of connected device state,
+     * we need to give HealthConnect permissions setup.
+     *
+     * 2) Loading - we have permissions but there is no connected device
+     *
+     * 3) Success - we have permissions and a connected device,
+     * return the latest state of the devices logData stream
+     *
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val uiState2: StateFlow<LogUiState> = logsRepository.hasAllPermissions
+        .flatMapLatest { hasPerm ->
+            if (!hasPerm) {
+                flowOf(LogUiState.NeedsPermissions)
+            } else {
+               deviceState.flatMapLatest { state ->
+                   when (state) {
+                       is DeviceState.WaitingToConnect ->
+                           flowOf(LogUiState.Loading)
+
+                       is DeviceState.Connected ->
+                           devicesRepository.startTraining(state.device)
+                           .map { logData ->
+                               Timber.i("ViewModel recvd LogData: $logData")
+                               LogUiState.Success(logData.display())
+                           }
+                   }
+                }
+
+            }
         }
         .stateIn(
             scope = viewModelScope,
@@ -85,16 +142,34 @@ class LogViewModel @Inject constructor(
             initialValue = LogUiState.Loading,
         )
 
+    val requiredPermissions = logsRepository.requiredPermissions
+    val permissionLauncher = logsRepository.requestHealthConnectPermissions()
+
+
     override fun onCleared() {
         super.onCleared()
         Timber.i("LogViewModel Cleared")
     }
+
+    fun checkPermissions() {
+        viewModelScope.launch {
+            Timber.i("LogViewModel checking permissions")
+            logsRepository.checkPermissions()
+        }
+    }
+}
+
+private sealed interface DeviceState {
+    data object WaitingToConnect: DeviceState
+    data class Connected(
+        val device: BleDeviceResource
+    ): DeviceState
 }
 
 
 sealed interface LogUiState {
+    data object NeedsPermissions : LogUiState
     data object Loading : LogUiState
-
     data class Success(
         val logData: LogDataView,
     ) : LogUiState

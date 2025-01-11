@@ -1,25 +1,38 @@
 package com.bitfarmsoftware.sweatlog.data
 
-import com.bitfarmsoftware.sweatlog.service.BleDeviceService
+import androidx.activity.result.contract.ActivityResultContract
+import com.bitfarmsoftware.sweatlog.data.healthconnect.HealthConnectDataStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class LogsRepository @Inject constructor(
-//    private val bleDeviceService: BleDeviceService // Inject interface
+    private val healthConnect: HealthConnectDataStore // Inject interface
 ) {
 
-    init{
-        Timber.i("Initializing LogsRepo")
+    val requiredPermissions = healthConnect.permissions
+
+    private var _hasPermissions = MutableStateFlow(false)
+    val hasAllPermissions: StateFlow<Boolean> = _hasPermissions
+
+    private val scope = CoroutineScope(Job() + Dispatchers.Default)
+
+    suspend fun checkPermissions() {
+        val hasPermissionsResult = healthConnect.hasAllPermissions()
+        Timber.i("checkPermissionsResult=${hasPermissionsResult}")
+        _hasPermissions.value = hasPermissionsResult
     }
 
-//    fun observeLogData(device: BleDeviceResource): Flow<LogData> {
-//        Timber.i("Request to observe LogData to Device that is connected? ${device.connected}")
-//        return device.bikeData
-//            .onEach { Timber.i("bikeData is emitting: ${it}") }
-//            .filter { it.isNotEmpty() }
-//            .map { data -> data.toLogData() }
-//    }
+    fun requestHealthConnectPermissions(): ActivityResultContract<Set<String>, Set<String>> {
+        return healthConnect.requestPermissionsActivityContract()
+    }
+
 }
 

@@ -68,7 +68,7 @@ fun SLNavHost(
         modifier = modifier,
     ) {
         logsSection(
-            navController::navigateToLog,
+            navController,
             modifier
         )
         composable<SettingsRoute> {
