@@ -60,6 +60,7 @@ import kotlin.reflect.KClass
 @Composable
 fun SLApp(
     appState: SLAppState,
+    startBLEService: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
 
@@ -78,6 +79,10 @@ fun SLApp(
 
     when {
         permissionsState.allPermissionsGranted -> {
+            // Start BLEDeviceService when permissions are granted
+            LaunchedEffect(Unit) {
+                startBLEService()
+            }
             SLAppView(appState, modifier)
         }
 

@@ -7,11 +7,22 @@ import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.HealthConnectClient.Companion.SDK_AVAILABLE
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
+import androidx.health.connect.client.records.CyclingPedalingCadenceRecord
+import androidx.health.connect.client.records.DistanceRecord
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.records.Record
+import androidx.health.connect.client.records.PowerRecord
+import androidx.health.connect.client.records.SpeedRecord
 import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
+import androidx.health.connect.client.request.ReadRecordsRequest
+import androidx.health.connect.client.response.InsertRecordsResponse
+import androidx.health.connect.client.time.TimeRangeFilter
+import com.bitfarmsoftware.sweatlog.model.WorkoutData
 import timber.log.Timber
+import java.time.Instant
 import javax.inject.Inject
+import kotlin.reflect.KClass
 
 class HealthConnectDataStore @Inject constructor(private val context: Context){
 
@@ -23,7 +34,15 @@ class HealthConnectDataStore @Inject constructor(private val context: Context){
         HealthPermission.getWritePermission(TotalCaloriesBurnedRecord::class),
         HealthPermission.getReadPermission(TotalCaloriesBurnedRecord::class),
         HealthPermission.getWritePermission(HeartRateRecord::class),
-        HealthPermission.getReadPermission(HeartRateRecord::class)
+        HealthPermission.getReadPermission(HeartRateRecord::class),
+        HealthPermission.getWritePermission(SpeedRecord::class),
+        HealthPermission.getReadPermission(SpeedRecord::class),
+        HealthPermission.getWritePermission(PowerRecord::class),
+        HealthPermission.getReadPermission(PowerRecord::class),
+        HealthPermission.getWritePermission(DistanceRecord::class),
+        HealthPermission.getReadPermission(DistanceRecord::class),
+        HealthPermission.getWritePermission(CyclingPedalingCadenceRecord::class),
+        HealthPermission.getReadPermission(CyclingPedalingCadenceRecord::class)
     )
 
     var availability = mutableStateOf(false)
@@ -47,6 +66,21 @@ class HealthConnectDataStore @Inject constructor(private val context: Context){
 
     fun requestPermissionsActivityContract(): ActivityResultContract<Set<String>, Set<String>> {
         return PermissionController.createRequestPermissionResultContract()
+    }
+
+    suspend fun insertRecords(records: List<Record>): List<String> {
+        val response = healthConnectClient.insertRecords(records)
+        return response.recordIdsList
+    }
+
+    suspend fun getExerciseSessions(start: Instant, end: Instant): List<ExerciseSessionRecord> {
+        val request = ReadRecordsRequest(
+            recordType = ExerciseSessionRecord::class,
+            timeRangeFilter = TimeRangeFilter.between(start, end),
+            ascendingOrder = false
+        )
+        val response = healthConnectClient.readRecords(request)
+        return response.records
     }
 
 }

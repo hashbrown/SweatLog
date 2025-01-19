@@ -1,10 +1,11 @@
 package com.bitfarmsoftware.sweatlog.model
 
 import timber.log.Timber
+import java.time.Instant
 
 private const val METERS_PER_MILE = 1609.344
 
-fun ByteArray.toTrainingData(): TrainingData {
+fun ByteArray.toTrainingData(): IndoorBikeData {
     var speed: Double? = null
     var avgSpeed: Double? = null
     var cadence: Double? = null
@@ -23,7 +24,7 @@ fun ByteArray.toTrainingData(): TrainingData {
 
     if (this.size < 2) {
         Timber.e("Data too short to parse flags")
-        return TrainingData()
+        return IndoorBikeData()
     }
 
     val flagsStr =  StringBuilder()
@@ -184,22 +185,22 @@ fun ByteArray.toTrainingData(): TrainingData {
 
     Timber.i("RECORD: Bytes(${this.size}) Flags{${flagsStr}}")
 
-    return TrainingData(
-        speed,
-        avgSpeed,
-        cadence,
-        avgCadence,
-        distance,
-        resistance,
-        power,
-        avgPower,
-        totalEnergy,
-        energyPerHour,
-        energyPerMinute,
-        heartRate,
-        met,
-        elapsedTime,
-        remainingTime
+    return IndoorBikeData(
+        speed = speed,
+        avgSpeed = avgSpeed,
+        cadence = cadence,
+        avgCadence =  avgCadence,
+        distance =distance,
+        resistance = resistance,
+        power = power,
+        avgPower = avgPower,
+        totalEnergy = totalEnergy,
+        energyPerHour = energyPerHour,
+        energyPerMinute = energyPerMinute,
+        heartrate = heartRate,
+        metabolicEquivalent = met,
+        elapsedTime = elapsedTime,
+        remainingTime = remainingTime
     )
 }
 

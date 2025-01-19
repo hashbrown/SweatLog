@@ -14,6 +14,7 @@ ksp = "2.0.20-1.0.25"
 lifecycleProcess = "2.8.7"
 lifecycleRuntimeKtx = "2.8.7"
 navCompose = "2.8.4"
+room = "2.6.1"
 
 
 junit = "4.13.2"
@@ -43,9 +44,11 @@ androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-toolin
 androidx-hilt-nav = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref="hiltNavCompose" }
 health-connect = { group = "androidx.health.connect", name = "connect-client", version.ref = "health" }
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
-hilt-android-testing = { group = "com.google.dagger", name = "hilt-android-testing", version.ref = "hilt" }
 hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
+room-compiler = {group ="androidx.room", name ="room-compiler", version.ref = "room"}
+room-ktx = {group ="androidx.room", name ="room-ktx", version.ref = "room"}
+room-runtime = {group ="androidx.room", name ="room-runtime", version.ref = "room"}
 timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
 
 # testing
@@ -55,6 +58,7 @@ androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-co
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-lifecycle-process = { group = "androidx.lifecycle", name = "lifecycle-process", version.ref = "lifecycleProcess" }
+hilt-android-testing = { group = "com.google.dagger", name = "hilt-android-testing", version.ref = "hilt" }
 kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinxCoroutinesTest" }
 
@@ -65,4 +69,5 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+room = { id = "androidx.room", version.ref = "room" }
 

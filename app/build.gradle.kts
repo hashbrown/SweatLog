@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.room)
 }
 
 android {
@@ -40,6 +41,10 @@ android {
     buildFeatures {
         compose = true
     }
+
+    room {
+        schemaDirectory("$projectDir/schemas")
+    }
 }
 
 dependencies {
@@ -54,6 +59,7 @@ dependencies {
     implementation(libs.androidx.compose.material3.navigationSuite)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.hilt.nav)
+    implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.nav.compose)
@@ -64,10 +70,12 @@ dependencies {
     implementation(libs.health.connect)
     implementation(libs.hilt.android)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.room.ktx)
+    implementation(libs.room.runtime)
     implementation(libs.timber)
-    implementation(libs.androidx.lifecycle.process)
 
     ksp(libs.hilt.compiler)
+    ksp(libs.room.compiler)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlin.test)

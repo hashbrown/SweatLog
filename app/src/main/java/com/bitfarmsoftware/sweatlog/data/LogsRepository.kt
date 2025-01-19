@@ -1,38 +1,25 @@
 package com.bitfarmsoftware.sweatlog.data
 
 import androidx.activity.result.contract.ActivityResultContract
-import com.bitfarmsoftware.sweatlog.data.healthconnect.HealthConnectDataStore
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.MutableStateFlow
+import com.bitfarmsoftware.sweatlog.data.ble.BleDeviceResource
+import com.bitfarmsoftware.sweatlog.data.db.SweatLog
+import com.bitfarmsoftware.sweatlog.model.RepoResource
+import com.bitfarmsoftware.sweatlog.model.WorkoutData
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
-import timber.log.Timber
-import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
-class LogsRepository @Inject constructor(
-    private val healthConnect: HealthConnectDataStore // Inject interface
-) {
 
-    val requiredPermissions = healthConnect.permissions
+interface LogsRepository  {
 
-    private var _hasPermissions = MutableStateFlow(false)
-    val hasAllPermissions: StateFlow<Boolean> = _hasPermissions
+    val requiredPermissions: Set<String>
+    val hasAllPermissions: StateFlow<Boolean>
+    val sweatLogs: Flow<RepoResource<List<SweatLog>>>
 
-    private val scope = CoroutineScope(Job() + Dispatchers.Default)
-
-    suspend fun checkPermissions() {
-        val hasPermissionsResult = healthConnect.hasAllPermissions()
-        Timber.i("checkPermissionsResult=${hasPermissionsResult}")
-        _hasPermissions.value = hasPermissionsResult
-    }
-
-    fun requestHealthConnectPermissions(): ActivityResultContract<Set<String>, Set<String>> {
-        return healthConnect.requestPermissionsActivityContract()
-    }
-
+    suspend fun checkPermissions()
+    fun requestHealthConnectPermissions(): ActivityResultContract<Set<String>, Set<String>>
+    suspend fun startNewWorkout(device: BleDeviceResource): Flow<RepoResource<WorkoutData>>
+    suspend fun finishWorkout()
 }
+
+
 

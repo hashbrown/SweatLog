@@ -3,9 +3,8 @@ package com.bitfarmsoftware.sweatlog.data
 import com.bitfarmsoftware.sweatlog.data.ble.BleDeviceResource
 import com.bitfarmsoftware.sweatlog.model.Device
 import com.bitfarmsoftware.sweatlog.model.SavedDevice
-import com.bitfarmsoftware.sweatlog.model.TrainingData
+import com.bitfarmsoftware.sweatlog.model.WorkoutData
 import kotlinx.coroutines.flow.Flow
-import javax.inject.Singleton
 
 interface DevicesRepository {
 
@@ -18,6 +17,6 @@ interface DevicesRepository {
     suspend fun scanForDevices()
     suspend fun stopDeviceScan()
     suspend fun connectDevice(device: BleDeviceResource)
-    suspend fun startTraining(device: BleDeviceResource): Flow<TrainingData>
+//    suspend fun startWorkout(device: BleDeviceResource): Flow<WorkoutData>
     suspend fun saveDevice(device: Device)
 }

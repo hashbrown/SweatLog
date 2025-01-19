@@ -18,8 +18,9 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
 import com.bitfarmsoftware.sweatlog.data.UserDataRepository
 import com.bitfarmsoftware.sweatlog.data.ble.BleDeviceResource
+import com.bitfarmsoftware.sweatlog.model.IndoorBikeData
 import com.bitfarmsoftware.sweatlog.model.SavedDevice
-import com.bitfarmsoftware.sweatlog.model.TrainingData
+import com.bitfarmsoftware.sweatlog.model.WorkoutData
 import com.bitfarmsoftware.sweatlog.model.toTrainingData
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -35,15 +36,12 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEmpty
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import javax.inject.Inject
-import javax.inject.Singleton
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
@@ -57,7 +55,7 @@ interface BleDeviceService {
     suspend fun stopScan()
     suspend fun connectDevice(device: BleDeviceResource)
     suspend fun disconnectDevice(device: BleDeviceResource)
-    suspend fun startTrainingSession(device: BleDeviceResource): Flow<TrainingData>
+    suspend fun startTrainingSession(device: BleDeviceResource): Flow<IndoorBikeData>
 
 }
 
@@ -216,7 +214,7 @@ class BLEDeviceServiceImpl @Inject constructor() : Service(), BleDeviceService {
     }
 
     @SuppressLint("MissingPermission")
-    override suspend fun startTrainingSession(device: BleDeviceResource): Flow<TrainingData> {
+    override suspend fun startTrainingSession(device: BleDeviceResource): Flow<IndoorBikeData> {
        return withContext(serviceScope.coroutineContext) {
             device.tryStartSession()
             device.bikeData

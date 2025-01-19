@@ -1,9 +1,8 @@
 package com.bitfarmsoftware.sweatlog.data
 
 import com.bitfarmsoftware.sweatlog.data.ble.hexStringToByteArray
-import com.bitfarmsoftware.sweatlog.model.TrainingData
+import com.bitfarmsoftware.sweatlog.model.WorkoutData
 import com.bitfarmsoftware.sweatlog.model.SavedDevice
-import com.bitfarmsoftware.sweatlog.model.SweatLog
 
 /**
  * com.bitfarmsoftware.sweatlog.data.SampleData for Jetpack Compose Tutorial
@@ -44,28 +43,28 @@ object SampleData {
         ),
     )
 
-    val logsSample = listOf(
-        SweatLog(
-            "111",
-            "12-06-2024",
-            TrainingData(elapsedTime = 1234U, avgPower = 180, totalEnergy = 234u)
-        ),
-        SweatLog(
-            "2222",
-            "12-12-2024",
-            TrainingData(elapsedTime = 6345U, avgPower = 138, totalEnergy = 513u)
-        ),
-        SweatLog(
-            "3333",
-            "12-15-2024",
-            TrainingData(elapsedTime = 345U, avgPower = 210, totalEnergy = 68u)
-        ),
-        SweatLog(
-            "4444",
-            "12-24-2024",
-            TrainingData(elapsedTime = 2223U, avgPower = 165, totalEnergy = 436u)
-        ),
-    )
+//    val logsSample = listOf(
+//        SweatLog(
+//            "111",
+//            "12-06-2024",
+//            WorkoutData(elapsedTime = 1234U, avgPower = 180, totalEnergy = 234u)
+//        ),
+//        SweatLog(
+//            "2222",
+//            "12-12-2024",
+//            WorkoutData(elapsedTime = 6345U, avgPower = 138, totalEnergy = 513u)
+//        ),
+//        SweatLog(
+//            "3333",
+//            "12-15-2024",
+//            WorkoutData(elapsedTime = 345U, avgPower = 210, totalEnergy = 68u)
+//        ),
+//        SweatLog(
+//            "4444",
+//            "12-24-2024",
+//            WorkoutData(elapsedTime = 2223U, avgPower = 165, totalEnergy = 436u)
+//        ),
+//    )
 
     val bikeData = listOf(
         "7409F705520078000005001D0000000000001E00".hexStringToByteArray(),

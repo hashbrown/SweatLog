@@ -68,15 +68,22 @@ internal fun LogsScreen(
 
     ) {
 //        LazyColumn(modifier = Modifier.background(Color.Blue)){
-        LazyColumn(){
+
             when (uiState) {
-                LogsUiState.Loading -> Unit
+                LogsUiState.Loading -> {
+                    Text("Loading your SweatLogs")
+                }
                 is LogsUiState.Success -> {
-                    items(
-                        items = uiState.logs,
-                        key = { it.id },
-                    ) { sweatLog ->
-                        LogCard(sweatLog, onLogClick)
+                    if (uiState.logs.isEmpty()) {
+                        Text("No SweatLogs yet, time to get going!")
+                    } else {
+                    LazyColumn() {
+                        items(
+                            items = uiState.logs,
+                            key = { it.id },
+                        ) { sweatLog ->
+                            LogCard(sweatLog, onLogClick)
+                        }
                     }
                 }
             }
@@ -153,15 +160,15 @@ fun MyFloatingActionButton(
     }
 }
 
-@Preview
-@Composable
-fun PreviewLogsScreen() {
-
-    val sweatLogViews = SampleData.logsSample.map { it.display() }.toList()
-    val uiState = LogsUiState.Success(sweatLogViews)
-
-    LogsScreen(
-        uiState,
-        {}
-    )
-}
+//@Preview
+//@Composable
+//fun PreviewLogsScreen() {
+//
+//    val sweatLogViews = SampleData.logsSample.map { it.display() }.toList()
+//    val uiState = LogsUiState.Success(sweatLogViews)
+//
+//    LogsScreen(
+//        uiState,
+//        {}
+//    )
+//}

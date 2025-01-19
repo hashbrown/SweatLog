@@ -1,6 +1,9 @@
 package com.bitfarmsoftware.sweatlog.data
 
 import android.content.Context
+import androidx.room.Room
+import com.bitfarmsoftware.sweatlog.data.db.SweatLogDao
+import com.bitfarmsoftware.sweatlog.data.db.SweatLogDatabase
 import com.bitfarmsoftware.sweatlog.service.BleDeviceService
 import com.bitfarmsoftware.sweatlog.service.BLEDeviceServiceImpl
 import com.bitfarmsoftware.sweatlog.service.BleDeviceServiceProvider
@@ -29,6 +32,28 @@ abstract class DataModule {
         devicesRepository: CombinedDevicesRepository,
     ): DevicesRepository
 
+    @Binds
+    internal abstract fun bindsLogsRepository(
+        logsRepository: LogsRepositoryImpl,
+    ): LogsRepository
+
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+object DatabaseModule {
+
+    @Provides
+    fun provideSweatLogDatabase(@ApplicationContext app: Context): SweatLogDatabase {
+        return Room.databaseBuilder(
+            app,
+            SweatLogDatabase::class.java,
+            "sweatlog_dd"
+        ).build()
+    }
+
+    @Provides
+    fun provideSweatLogDao(db: SweatLogDatabase): SweatLogDao = db.sweatLogDao()
 }
 
 @Module
