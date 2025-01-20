@@ -2,23 +2,15 @@ package com.bitfarmsoftware.sweatlog.data.ble
 
 import androidx.bluetooth.BluetoothDevice
 import androidx.bluetooth.GattClientScope
-import androidx.bluetooth.GattService
-import com.bitfarmsoftware.sweatlog.data.ble.reference.AllGattCharacteristics
-import com.bitfarmsoftware.sweatlog.data.ble.reference.AllGattServices
 import com.bitfarmsoftware.sweatlog.data.ble.reference.GattCharacteristics
 import com.bitfarmsoftware.sweatlog.data.ble.reference.GattServices
 import com.bitfarmsoftware.sweatlog.data.ble.reference.uuid
 import com.bitfarmsoftware.sweatlog.model.Device
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.isActive
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import timber.log.Timber
 
 class BleDeviceResource(val bleDevice: BluetoothDevice,
@@ -28,14 +20,8 @@ class BleDeviceResource(val bleDevice: BluetoothDevice,
 ) : Device {
 
     var connected = MutableStateFlow<Boolean>(false)
-
-    private val _bikeData = MutableStateFlow<Flow<ByteArray>>(emptyFlow())
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val bikeData: Flow<ByteArray> = _bikeData.flatMapLatest { it } // Automatically switch flows
-
-    private var subscribedToBikeData = false
-
     private lateinit var gattClient: GattClientScope
+
 
     fun onConnected(gattClientScope: GattClientScope, coroutineScope: CoroutineScope) {
         Timber.i("Device connected: ${this.name}")
@@ -49,16 +35,9 @@ class BleDeviceResource(val bleDevice: BluetoothDevice,
         connected.update {false}
     }
 
-    fun tryStartSession() {
-        if (!subscribedToBikeData) {
-            connectBikeData()
-        }
-    }
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private fun connectBikeData() {
-
-        _bikeData.value = gattClient.getService(GattServices.FITNESS_MACHINE.uuid())
+    suspend fun getBikeDataFlow(): Flow<ByteArray>{
+        Timber.i("getBikeDataFlow()")
+        return gattClient.getService(GattServices.FITNESS_MACHINE.uuid())
             ?.getCharacteristic(GattCharacteristics.INDOOR_BIKE_DATA.uuid())
             ?.let { bikeCharacteristic ->
 
@@ -66,33 +45,11 @@ class BleDeviceResource(val bleDevice: BluetoothDevice,
                 Timber.i("Found Bike Characteristic, subscribing")
                 gattClient.subscribeToCharacteristic(
                     bikeCharacteristic
-                ).also { subscribedToBikeData = true }
+                )
 //                        .onEach { Timber.i("Raw BikeData:: ${it.toHexString()}") }
-            } ?: emptyFlow() // Return an empty flow if characteristic is null
+            }?: emptyFlow() // Return an empty flow if characteristic is null
     }
 
-
-    suspend fun startSession() {
-        Timber.i("Starting Session")
-         val fmService = gattClient.getService(GattServices.FITNESS_MACHINE.uuid())
-         if (fmService != null){
-             val fmcp = fmService.getCharacteristic(GattCharacteristics.FITNESS_MACHINE_CONTROL_POINT.uuid())
-             if(fmcp != null) {
-//                 Timber.i("Requesting Reset")
-//                 val resetResult = gattClient.writeCharacteristic(fmcp, "0x01".hexStringToByteArray())
-                 Timber.i("Requesting Start")
-                 // send "start" command
-                 val startResult = gattClient.writeCharacteristic(fmcp, "0x07".hexStringToByteArray())
-                 Timber.i("Session Started")
-                 connectBikeData()
-
-             } else {
-                 Timber.w("Could not get Fitness Machine Control Point Characteristic")
-             }
-         } else {
-             Timber.w("StartSession: Cannot get Fitness Machine Service")
-         }
-    }
 
 
     override fun equals(other: Any?): Boolean {

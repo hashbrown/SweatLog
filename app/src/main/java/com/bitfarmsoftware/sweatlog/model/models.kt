@@ -11,12 +11,6 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import java.time.Instant
 
-//data class SweatLog(
-//    val id: Int,
-//    val connectId: String,
-//    val title: String,
-//    val workout: WorkoutSession
-//)
 
 @Serializable
 data class WorkoutData(
@@ -34,7 +28,7 @@ data class WorkoutData(
     val minPower: Int? = null,
     val maxPower: Int? = null,
     val avgPower: Int? = null,
-    val totalEnergy: UInt? = null,
+    val totalEnergy: Int? = null,
     val heartrate: Int? = null,
     val minHeartrate: Int? = null,
     val maxHeartrate: Int? = null,
@@ -114,7 +108,7 @@ fun IndoorBikeData.asWorkoutData(): WorkoutData {
         resistance = this.resistance?.toInt(),
         power = this.power,
         avgPower = this.avgPower,
-        totalEnergy = this.totalEnergy,
+        totalEnergy = this.totalEnergy?.toInt(),
         heartrate = this.heartrate?.toInt(),
         elapsedTime = this.elapsedTime?.toInt()
     )

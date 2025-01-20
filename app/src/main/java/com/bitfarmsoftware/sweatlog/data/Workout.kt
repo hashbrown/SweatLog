@@ -1,5 +1,6 @@
 package com.bitfarmsoftware.sweatlog.data
 
+import androidx.compose.runtime.currentCompositionErrors
 import com.bitfarmsoftware.sweatlog.data.ble.BleDeviceResource
 import com.bitfarmsoftware.sweatlog.data.healthconnect.HealthConnectDataStore
 import com.bitfarmsoftware.sweatlog.model.IndoorBikeData
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.scan
 import kotlinx.serialization.Serializable
 import timber.log.Timber
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 import kotlin.time.Duration
@@ -49,12 +51,12 @@ class Workout@AssistedInject constructor(
 
     suspend fun start() {
         _workoutData.value =
-            accumulatedFlow(serviceProvider.getService().startTrainingSession(device))
+            accumulatedFlow(serviceProvider.getService().startTrainingSession())
     }
 
     suspend fun finish() {
-//        serviceProvider.getService().stopTrainingSession(device)
         _workoutData.value = emptyFlow()
+        serviceProvider.getService().stopTrainingSession()
     }
 
     private fun accumulatedFlow(bikeDataFlow: Flow<IndoorBikeData>): Flow<WorkoutData>{
@@ -73,10 +75,10 @@ class WorkoutSession() {
         val MAX_SEGMENT_TIME: Duration = 15.minutes
     }
 
-    private var currentSegment: WorkoutSegment = WorkoutSegment()
-
     var sessionSegment: WorkoutSegment = WorkoutSegment()
     val workoutData: WorkoutData get() = sessionSegment.data
+
+    private lateinit var currentSegment: WorkoutSegment
 
     /**
      * WorkoutSession creates a new segment when resistance changes,
@@ -92,12 +94,14 @@ class WorkoutSession() {
             segments.add(currentSegment)
         }
         currentSegment.accumulate(workoutData)
+        sessionSegment.endTime = currentSegment.endTime
 
         return this
     }
 
     private fun startNewSegment(workoutData: WorkoutData): Boolean{
-        return (currentSegment.data.resistance != workoutData.resistance)
+        return !this::currentSegment.isInitialized
+                ||(currentSegment.data.resistance != workoutData.resistance)
                 || Instant.now().isAfter(currentSegment.startTime.plus(MAX_SEGMENT_TIME.toJavaDuration()))
     }
 
@@ -114,8 +118,9 @@ class WorkoutSegment(){
 
     fun accumulate(workoutData: WorkoutData){
         if (!this::startTime.isInitialized) startTime = Instant.now()
-        endTime = Instant.now()
+
         accumulator.accumulate(workoutData)
+        endTime = Instant.now()
     }
 
 }
@@ -123,6 +128,7 @@ class WorkoutSegment(){
 
 class WorkoutDataAccumulator {
     var value: WorkoutData = WorkoutData()
+    var numAccumulated = 0
 
     private val speedAccum = NumberAccumulator<Double>()
     private val cadenceAccum = NumberAccumulator<Double>()
@@ -150,7 +156,7 @@ class WorkoutDataAccumulator {
             maxHeartrate = heartrateAccum.max,
             avgHeartrate = heartrateAccum.avg
         )
-
+        numAccumulated++
         return this
     }
 

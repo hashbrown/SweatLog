@@ -6,18 +6,21 @@ import androidx.health.connect.client.records.DistanceRecord
 import androidx.health.connect.client.records.ExerciseSegment
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.records.PowerRecord
 import androidx.health.connect.client.records.Record
 import androidx.health.connect.client.records.SpeedRecord
+import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
+import androidx.health.connect.client.units.kilocalories
 import androidx.health.connect.client.units.miles
 import androidx.health.connect.client.units.milesPerHour
+import androidx.health.connect.client.units.watts
 import com.bitfarmsoftware.sweatlog.data.ble.BleDeviceResource
-import com.bitfarmsoftware.sweatlog.data.db.SweatLogDao
 import com.bitfarmsoftware.sweatlog.data.db.SweatLog
+import com.bitfarmsoftware.sweatlog.data.db.SweatLogDao
 import com.bitfarmsoftware.sweatlog.data.healthconnect.HealthConnectDataStore
 import com.bitfarmsoftware.sweatlog.model.RepoResource
 import com.bitfarmsoftware.sweatlog.model.WorkoutData
 import com.bitfarmsoftware.sweatlog.model.asSummary
-import com.bitfarmsoftware.sweatlog.service.BleDeviceServiceProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -32,9 +35,11 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
+import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -42,10 +47,10 @@ import javax.inject.Singleton
 class LogsRepositoryImpl @Inject constructor(
     private val healthConnect: HealthConnectDataStore,
     private val sweatlogDao: SweatLogDao,
-    private val serviceProvider: BleDeviceServiceProvider
 ): LogsRepository {
 
-    @Inject lateinit var workoutFactory: Workout.WorkoutFactory
+    @Inject
+    lateinit var workoutFactory: Workout.WorkoutFactory
 
     override val requiredPermissions = healthConnect.permissions
 
@@ -60,7 +65,7 @@ class LogsRepositoryImpl @Inject constructor(
             emit(RepoResource.Success(logs))
         }
     }.catch { cause ->
-            emit(RepoResource.Error(cause))
+        emit(RepoResource.Error(cause))
     }.onStart {
         Timber.i("sweatLogs flow started")
     }.onCompletion {
@@ -69,7 +74,7 @@ class LogsRepositoryImpl @Inject constructor(
 
     private var activeWorkout: Workout? = null
 
-    private val scope = CoroutineScope(Job() + Dispatchers.Default)
+    private val dbScope = CoroutineScope(Job() + Dispatchers.Default)
 
     override suspend fun checkPermissions() {
         val hasPermissionsResult = healthConnect.hasAllPermissions()
@@ -102,7 +107,7 @@ class LogsRepositoryImpl @Inject constructor(
 
     }
 
-    override suspend fun finishWorkout(){
+    override suspend fun finishWorkout() {
         Timber.i("Finish Workout")
         activeWorkout?.let {
             it.finish()
@@ -111,19 +116,22 @@ class LogsRepositoryImpl @Inject constructor(
         activeWorkout = null
     }
 
-    private suspend fun saveWorkout(workout: WorkoutSession){
-        val insertedIds =
+    private suspend fun saveWorkout(workout: WorkoutSession) {
+        withContext(dbScope.coroutineContext) {
+            val insertedIds =
                 healthConnect.insertRecords(workout.records(ZonedDateTime.now().offset))
-        if (insertedIds.isEmpty()) {
-            // TODO queue sync of data into healthconnect later
-        } else {
-            val sessionHCId = insertedIds[0]
-            val sweatlog = SweatLog(
-                title = "Indoor Cycling",
-                connectId = sessionHCId,
-                workoutData = workout.asSummary()
-            )
-            sweatlogDao.insertAll(sweatlog)
+            if (insertedIds.isEmpty()) {
+                // TODO queue sync of data into healthconnect later
+                Timber.w("No HealthConnect records inserted")
+            } else {
+                val sessionHCId = insertedIds[0]
+                val sweatlog = SweatLog(
+                    title = "Indoor Cycling",
+                    connectId = sessionHCId,
+                    workoutData = workout.asSummary()
+                )
+                sweatlogDao.insertAll(sweatlog)
+            }
         }
     }
 }
@@ -133,9 +141,16 @@ fun WorkoutSession.records(zoneOffset: ZoneOffset): List<Record> {
     val segments = mutableListOf<ExerciseSegment>()
     val segmentLevels = mutableListOf<Int>()
     for (segment in this.segments) {
+        // make sure endTime is after startTime in millis precision, else HC pukes
+        val startMs = segment.startTime.truncatedTo(ChronoUnit.MILLIS)
+        val endMs = if (segment.endTime.truncatedTo(ChronoUnit.MILLIS).isAfter(startMs)) {
+                segment.endTime.truncatedTo(ChronoUnit.MILLIS)
+            } else {
+                segment.endTime.plus(1, ChronoUnit.MILLIS)
+            }
         segments.add(
-            ExerciseSegment(startTime = segment.startTime,
-                endTime = segment.endTime,
+            ExerciseSegment(startTime = startMs,
+                endTime = endMs,
                 segmentType = ExerciseSegment.EXERCISE_SEGMENT_TYPE_BIKING_STATIONARY,
                 repetitions = 1
             )
@@ -145,12 +160,12 @@ fun WorkoutSession.records(zoneOffset: ZoneOffset): List<Record> {
     }
 
 
-    val exerciseSession =  ExerciseSessionRecord(startTime = this.sessionSegment.startTime,
+    val exerciseSession =  ExerciseSessionRecord(startTime = this.sessionSegment.startTime.truncatedTo(ChronoUnit.MILLIS),
             startZoneOffset = zoneOffset,
-            endTime = this.sessionSegment.endTime,
+            endTime = this.sessionSegment.endTime.truncatedTo(ChronoUnit.MILLIS),
             endZoneOffset = zoneOffset,
             exerciseType = ExerciseSessionRecord.EXERCISE_TYPE_BIKING_STATIONARY,
-            title = "Indoor Cycling - Biking Stationary",
+            title = "Indoor Cycling",
             notes = segmentLevels.joinToString(),
             segments = segments
         )
@@ -159,49 +174,81 @@ fun WorkoutSession.records(zoneOffset: ZoneOffset): List<Record> {
 }
 
 
-fun WorkoutSegment.records(zoneOffset: ZoneOffset) = mutableListOf<Record>(
+fun WorkoutSegment.records(zoneOffset: ZoneOffset): List<Record> {
+
+    val records = mutableListOf<Record>(
         SpeedRecord(
-            startTime = this.startTime,
+            startTime = this.startTime.truncatedTo(ChronoUnit.MILLIS),
             startZoneOffset = zoneOffset,
-            endTime = this.endTime,
+            endTime = this.endTime.truncatedTo(ChronoUnit.MILLIS),
             endZoneOffset = zoneOffset,
             samples = listOf(
-                SpeedRecord.Sample(time = this.startTime,
-                    speed = this.data.avgSpeed!!.milesPerHour)
+                SpeedRecord.Sample(
+                    time = this.startTime.truncatedTo(ChronoUnit.MILLIS),
+                    speed = this.data.avgSpeed!!.milesPerHour
+                )
             ),
         ),
         CyclingPedalingCadenceRecord(
+            startTime = this.startTime.truncatedTo(ChronoUnit.MILLIS),
+            startZoneOffset = zoneOffset,
+            endTime = this.endTime.truncatedTo(ChronoUnit.MILLIS),
+            endZoneOffset = zoneOffset,
+            samples = listOf(
+                CyclingPedalingCadenceRecord.Sample(
+                    time = this.startTime.truncatedTo(ChronoUnit.MILLIS),
+                    revolutionsPerMinute = this.data.avgCadence!!
+                )
+            ),
+        ),
+        DistanceRecord(
+            startTime = this.startTime.truncatedTo(ChronoUnit.MILLIS),
+            startZoneOffset = zoneOffset,
+            endTime = this.endTime.truncatedTo(ChronoUnit.MILLIS),
+            endZoneOffset = zoneOffset,
+            distance = this.data.distance!!.miles,
+        ),
+        PowerRecord(
+            startTime = this.startTime.truncatedTo(ChronoUnit.MILLIS),
+            startZoneOffset = zoneOffset,
+            endTime = this.endTime.truncatedTo(ChronoUnit.MILLIS),
+            endZoneOffset = zoneOffset,
+            samples = listOf(
+                PowerRecord.Sample(
+                    time = this.startTime.truncatedTo(ChronoUnit.MILLIS),
+                    power = this.data.avgPower!!.watts
+                )
+            )
+        ),
+        TotalCaloriesBurnedRecord(
+            startTime = this.startTime.truncatedTo(ChronoUnit.MILLIS),
+            startZoneOffset = zoneOffset,
+            endTime = this.endTime.truncatedTo(ChronoUnit.MILLIS),
+            endZoneOffset = zoneOffset,
+            energy = this.data.totalEnergy!!.kilocalories
+
+        )
+    )
+
+    // check to see if we were optionally collecting Heartrate
+    if (this.data.avgHeartrate != null) {
+        records + HeartRateRecord(
             startTime = this.startTime,
             startZoneOffset = zoneOffset,
             endTime = this.endTime,
             endZoneOffset = zoneOffset,
             samples = listOf(
-                CyclingPedalingCadenceRecord.Sample(time = this.startTime,
-                    revolutionsPerMinute = this.data.avgCadence!!)
-            ),
-        ),
-        DistanceRecord(startTime = this.startTime,
-            startZoneOffset = zoneOffset,
-            endTime = this.endTime,
-            endZoneOffset = zoneOffset,
-            distance = this.data.distance!!.miles,
-        ),
-        HeartRateRecord(startTime = this.startTime,
-            startZoneOffset = zoneOffset,
-            endTime = this.endTime,
-            endZoneOffset = zoneOffset,
-            samples =
-                if (this.data.avgHeartrate != null) {
-                    listOf(HeartRateRecord.Sample(
-                        time = this.startTime,
-                        beatsPerMinute = this.data.avgHeartrate!!.toLong()
-                    ))
-                } else {
-                    emptyList()
-                }
-
+                HeartRateRecord.Sample(
+                    time = this.startTime,
+                    beatsPerMinute = this.data.avgHeartrate!!.toLong()
+                )
+            )
         )
-    )
+    }
+
+
+    return records
+}
 
 
 

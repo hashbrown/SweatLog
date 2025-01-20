@@ -69,6 +69,7 @@ class HealthConnectDataStore @Inject constructor(private val context: Context){
     }
 
     suspend fun insertRecords(records: List<Record>): List<String> {
+        records.forEach { Timber.i("HCRecord=${it}") }
         val response = healthConnectClient.insertRecords(records)
         return response.recordIdsList
     }
