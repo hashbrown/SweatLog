@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onStart
 import timber.log.Timber
 import java.time.ZoneOffset
@@ -62,6 +63,8 @@ class LogsRepositoryImpl @Inject constructor(
             emit(RepoResource.Error(cause))
     }.onStart {
         Timber.i("sweatLogs flow started")
+    }.onCompletion {
+        Timber.i("sweatLogs flow done")
     }
 
     private var activeWorkout: Workout? = null
@@ -82,25 +85,28 @@ class LogsRepositoryImpl @Inject constructor(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override suspend fun startNewWorkout(device: BleDeviceResource): Flow<RepoResource<WorkoutData>> {
-        val workout = workoutFactory.create(device)
-        workout.start()
-        activeWorkout = workout
+
+        if (activeWorkout == null) {
+            val workout = workoutFactory.create(device)
+            workout.start()
+            activeWorkout = workout
+        }
 
         return flowOf(RepoResource.Loading)
             .flatMapLatest {
-                workout.workoutData
+                activeWorkout!!.workoutData
                     .map({ RepoResource.Success(it) })
+                    .onStart { Timber.i("logRepo:: workoutData flow started") }
+                    .onCompletion { Timber.i("LogRepo:: workoutData flow completed") }
             }
 
     }
 
     override suspend fun finishWorkout(){
-
+        Timber.i("Finish Workout")
         activeWorkout?.let {
             it.finish()
             saveWorkout(it.session)
-//            _roomLogs.add(SweatLog("1", "workout", it.session.workoutData))
-            //TODO create SweatLog
         }
         activeWorkout = null
     }
@@ -184,10 +190,16 @@ fun WorkoutSegment.records(zoneOffset: ZoneOffset) = mutableListOf<Record>(
             startZoneOffset = zoneOffset,
             endTime = this.endTime,
             endZoneOffset = zoneOffset,
-            samples = listOf(
-                HeartRateRecord.Sample(time = this.startTime,
-                    beatsPerMinute = this.data.avgHeartrate!!.toLong())
-            )
+            samples =
+                if (this.data.avgHeartrate != null) {
+                    listOf(HeartRateRecord.Sample(
+                        time = this.startTime,
+                        beatsPerMinute = this.data.avgHeartrate!!.toLong()
+                    ))
+                } else {
+                    emptyList()
+                }
+
         )
     )
 

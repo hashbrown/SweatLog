@@ -27,7 +27,9 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -38,7 +40,6 @@ class LogsViewModel @Inject constructor(
     logsRepository: LogsRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
-
 
     // Backing property to avoid state updates from other classes
 //    private val _uiState = MutableStateFlow(LogsUiState.Success(logsSample))
@@ -119,14 +120,17 @@ class LogViewModel @Inject constructor(
 
                             }
                         }.onEach {
-                            Timber.i("ViewModel recvd LogData: $it")
+                            Timber.i("ViewModel recvd LogUiState: $it")
                         }
                 }
+                .onStart { Timber.i("Workout:: uiState flow started") }
+                .onCompletion { Timber.i("Workout:: uiState flow completed") }
                 .stateIn(
                     scope = viewModelScope,
                     started = SharingStarted.WhileSubscribed(5_000),
                     initialValue = LogUiState.Loading,
                 )
+
 
     /**
      * This should result in 3 states for the UI:
@@ -185,6 +189,12 @@ class LogViewModel @Inject constructor(
         viewModelScope.launch {
             Timber.i("LogViewModel checking permissions")
             logsRepository.checkPermissions()
+        }
+    }
+
+    fun finishWorkout() {
+        viewModelScope.launch {
+            logsRepository.finishWorkout()
         }
     }
 }

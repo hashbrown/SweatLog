@@ -15,8 +15,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.scan
 import kotlinx.serialization.Serializable
+import timber.log.Timber
 import java.time.Instant
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
@@ -54,10 +57,12 @@ class Workout@AssistedInject constructor(
         _workoutData.value = emptyFlow()
     }
 
-    fun accumulatedFlow(bikeDataFlow: Flow<IndoorBikeData>): Flow<WorkoutData>{
+    private fun accumulatedFlow(bikeDataFlow: Flow<IndoorBikeData>): Flow<WorkoutData>{
         return bikeDataFlow.scan(session){ acc, value ->
             acc.accumulate(value.asWorkoutData())
         }.map {it.workoutData}
+            .onStart { Timber.i("Workout:: workoutData flow started") }
+            .onCompletion { Timber.i("Workout:: workoutData flow completed") }
     }
 
 }

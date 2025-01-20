@@ -7,8 +7,7 @@ import androidx.navigation.NavOptions
 import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
-import androidx.navigation.navDeepLink
-import com.bitfarmsoftware.sweatlog.ui.LogScreen
+import com.bitfarmsoftware.sweatlog.ui.WorkoutScreen
 import com.bitfarmsoftware.sweatlog.ui.LogsScreen
 import kotlinx.serialization.Serializable
 
@@ -42,7 +41,8 @@ fun NavGraphBuilder.logsSection(
             )
         }
         composable<LogRoute> {
-            LogScreen(
+            WorkoutScreen(
+                onFinishWorkout = navController::popBackStack,
                 modifier = modifier
             )
         }

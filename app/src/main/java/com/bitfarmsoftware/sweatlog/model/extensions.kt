@@ -183,7 +183,7 @@ fun ByteArray.toTrainingData(): IndoorBikeData {
         }
     }
 
-    Timber.i("RECORD: Bytes(${this.size}) Flags{${flagsStr}}")
+//    Timber.i("RECORD: Bytes(${this.size}) Flags{${flagsStr}}")
 
     return IndoorBikeData(
         speed = speed,

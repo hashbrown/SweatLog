@@ -14,13 +14,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,24 +51,29 @@ fun PermissionLauncher(viewModel: LogViewModel = hiltViewModel()) {
 }
 
 @Composable
-fun LogScreen(
+fun WorkoutScreen(
+    onFinishWorkout: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LogViewModel = hiltViewModel(),
     ) {
 
     val uiState by viewModel.uiState2.collectAsStateWithLifecycle()
-
-    LogScreen(
-        uiState
+    val finishWorkout: () -> Unit = {
+        viewModel.finishWorkout()
+        onFinishWorkout()
+    }
+    WorkoutScreen(
+        uiState,
+        finishWorkout
     )
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun LogScreen(
-    uiState: LogUiState
+internal fun WorkoutScreen(
+    uiState: LogUiState,
 //    onShowSnackbar: suspend (String, String?) -> Boolean,
-//    onLogClick: (String) -> Unit,
+    finishWorkout: () -> Unit
  //   modifier: Modifier = Modifier,
 ) {
     Column (
@@ -102,12 +107,12 @@ internal fun LogScreen(
                 PermissionLauncher()
             }
             is LogUiState.Success -> {
-                Timber.i("Re-compose with SUCCESS state")
+//                Timber.i("Re-compose with SUCCESS state")
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                 ) {
-                    LogDataCard("Time Elapsed", uiState.logData.elapsedTime)
+                    WorkoutDataCard("Time Elapsed", uiState.logData.elapsedTime)
                 }
                 Spacer(Modifier.size(16.dp))
                 Row(
@@ -115,22 +120,10 @@ internal fun LogScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Box(modifier = Modifier.weight(1f)) {
-                        LogDataCard("Power (Watts)", uiState.logData.power)
+                        WorkoutDataCard("Power (Watts)", uiState.logData.power)
                     }
                     Box(modifier = Modifier.weight(1f)) {
-                        LogDataCard("Heart Rate (BPM)", uiState.logData.heartrate)
-                    }
-                }
-                Spacer(Modifier.size(16.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Box(modifier = Modifier.weight(1f)) {
-                        LogDataCard("Speed (Mph)", uiState.logData.speed)
-                    }
-                    Box(modifier = Modifier.weight(1f)) {
-                        LogDataCard("Cadence (RPM)", uiState.logData.cadence)
+                        WorkoutDataCard("Heart Rate (BPM)", uiState.logData.heartrate)
                     }
                 }
                 Spacer(Modifier.size(16.dp))
@@ -139,14 +132,31 @@ internal fun LogScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Box(modifier = Modifier.weight(1f)) {
-                        LogDataCard("Distance (Miles)", uiState.logData.distance)
+                        WorkoutDataCard("Speed (Mph)", uiState.logData.speed)
                     }
                     Box(modifier = Modifier.weight(1f)) {
-                        LogDataCard("Calories (kCal)", uiState.logData.totalEnergy)
+                        WorkoutDataCard("Cadence (RPM)", uiState.logData.cadence)
+                    }
+                }
+                Spacer(Modifier.size(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(modifier = Modifier.weight(1f)) {
+                        WorkoutDataCard("Distance (Miles)", uiState.logData.distance)
                     }
                     Box(modifier = Modifier.weight(1f)) {
-                        LogDataCard("Resistance", uiState.logData.resistance)
+                        WorkoutDataCard("Calories (kCal)", uiState.logData.totalEnergy)
                     }
+                    Box(modifier = Modifier.weight(1f)) {
+                        WorkoutDataCard("Resistance", uiState.logData.resistance)
+                    }
+                }
+                Spacer(Modifier.size(16.dp))
+                Button(onClick = {finishWorkout()},
+                        modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                    Text(text = "Finish Workout")
                 }
 
             }
@@ -155,7 +165,7 @@ internal fun LogScreen(
 }
 
 @Composable
-fun LogDataCard(dataName: String, dataValue: String) {
+fun WorkoutDataCard(dataName: String, dataValue: String) {
     Card (border = BorderStroke(1.dp,MaterialTheme.colorScheme.secondary),
         modifier = Modifier.widthIn(min = 20.dp, max = 250.dp)
 //        .heightIn(min = 80.dp, max = 150.dp)
@@ -192,16 +202,16 @@ fun LogDataCard(dataName: String, dataValue: String) {
 
 @Preview
 @Composable
-fun LogDataCardPreview() {
-    LogDataCard("Heart Rate (bpm)", "145")
+fun WorkoutDataCardPreview() {
+    WorkoutDataCard("Heart Rate (bpm)", "145")
 }
 
 @Preview
 @Composable
-fun LogScreenPreview() {
+fun WorkoutScreenPreview() {
 
     val uiState = LogUiState.Success(LogDataView(power = "130", speed = "15.3", cadence="43", distance = "12.67",
         resistance = "6", totalEnergy = "88", heartrate = "140", elapsedTime = "0:15:43"))
-    LogScreen(uiState)
+    WorkoutScreen(uiState, {})
 }
 
