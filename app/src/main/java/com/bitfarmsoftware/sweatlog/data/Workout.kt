@@ -1,6 +1,5 @@
 package com.bitfarmsoftware.sweatlog.data
 
-import androidx.compose.runtime.currentCompositionErrors
 import com.bitfarmsoftware.sweatlog.data.ble.BleDeviceResource
 import com.bitfarmsoftware.sweatlog.data.healthconnect.HealthConnectDataStore
 import com.bitfarmsoftware.sweatlog.model.IndoorBikeData
@@ -19,10 +18,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.scan
-import kotlinx.serialization.Serializable
 import timber.log.Timber
 import java.time.Instant
-import java.time.temporal.ChronoUnit
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 import kotlin.time.Duration
@@ -89,8 +86,13 @@ class WorkoutSession() {
     fun accumulate(workoutData: WorkoutData): WorkoutSession{
         sessionSegment.accumulate(workoutData)
         if (startNewSegment(workoutData)){
-            // start new segment when resistance changes
-            currentSegment = WorkoutSegment()
+            // handle initial state where we don't yet have a currentSegment holding the last received workoutData.
+            val lastWorkoutData = if (::currentSegment.isInitialized) {
+                currentSegment.data
+            } else {
+                WorkoutData()
+            }
+            currentSegment = WorkoutSegment(lastWorkoutData)
             segments.add(currentSegment)
         }
         currentSegment.accumulate(workoutData)
@@ -108,12 +110,12 @@ class WorkoutSession() {
 }
 
 
-class WorkoutSegment(){
+class WorkoutSegment(private val initialState: WorkoutData = WorkoutData()){
 
     lateinit var startTime: Instant
     lateinit var endTime: Instant
 
-    private val accumulator: WorkoutDataAccumulator = WorkoutDataAccumulator()
+    private val accumulator: WorkoutDataAccumulator = WorkoutDataAccumulator(initialState)
     val data get() = accumulator.value
 
     fun accumulate(workoutData: WorkoutData){
@@ -122,13 +124,11 @@ class WorkoutSegment(){
         accumulator.accumulate(workoutData)
         endTime = Instant.now()
     }
-
 }
 
 
-class WorkoutDataAccumulator {
+class WorkoutDataAccumulator(private val initialState: WorkoutData) {
     var value: WorkoutData = WorkoutData()
-    var numAccumulated = 0
 
     private val speedAccum = NumberAccumulator<Double>()
     private val cadenceAccum = NumberAccumulator<Double>()
@@ -142,6 +142,12 @@ class WorkoutDataAccumulator {
         if (workoutData.power != null) powerAccum.accumulate(workoutData.power)
         if (workoutData.heartrate != null) heartrateAccum.accumulate(workoutData.heartrate)
 
+        // These values are accumulated already in the IndoorBikeData provided by the device.
+        // Only report the delta of the value that was observed during this segment.
+        val distanceDelta = workoutData.distance?.let { it - (initialState.distance ?: 0.0) }?: 0.0
+        val energyDelta = workoutData.totalEnergy?.let { it - (initialState.totalEnergy ?: 0) }?: 0
+        val timeDelta = workoutData.elapsedTime?.let { it - (initialState.elapsedTime ?: 0) }?: 0
+
         value = workoutData.copy(
             minSpeed = speedAccum.min,
             maxSpeed = speedAccum.max,
@@ -154,15 +160,17 @@ class WorkoutDataAccumulator {
             avgPower = powerAccum.avg,
             minHeartrate = heartrateAccum.min,
             maxHeartrate = heartrateAccum.max,
-            avgHeartrate = heartrateAccum.avg
+            avgHeartrate = heartrateAccum.avg,
+            distance = distanceDelta,
+            totalEnergy = energyDelta,
+            elapsedTime = timeDelta
         )
-        numAccumulated++
         return this
     }
 
 }
 
-class NumberAccumulator<T : Number> {
+open class NumberAccumulator<T : Number> {
     private var count: Int = 0
     private var sum: Double = 0.0 // Use Double for precise calculations
 
@@ -172,17 +180,22 @@ class NumberAccumulator<T : Number> {
     var avg: T? = null
 
     fun accumulate(value: T) {
-        sum += value.toDouble()
+        val adjValue = adjustedValue(value)
+        sum += adjValue.toDouble()
         count++
-        if (count == 1) { avg = value}
+        if (count == 1) { avg = adjValue}
         if (count % 5 == 0) avg = coerceAvgToType(sum / count)
 
-        if (min == null || value.toDouble() < min!!.toDouble()) {
-            min = value
+        if (min == null || adjValue.toDouble() < min!!.toDouble()) {
+            min = adjValue
         }
-        if (max == null || value.toDouble() > max!!.toDouble()) {
-            max = value
+        if (max == null || adjValue.toDouble() > max!!.toDouble()) {
+            max = adjValue
         }
+    }
+
+    open fun adjustedValue(value: T): T {
+        return value
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -194,6 +207,21 @@ class NumberAccumulator<T : Number> {
             is Double -> value as T
             is Short -> value.roundToInt().toShort() as T
             else -> throw IllegalArgumentException("Unsupported type: ${min?.javaClass?.simpleName}")
+        }
+    }
+}
+
+@Suppress("UNCHECKED_CAST")
+class DeltaNumberAccumulator<T : Number> (private val baseValue: T): NumberAccumulator<T>() {
+    override fun adjustedValue(value: T): T {
+        return when (value) {
+            is Int -> (value - baseValue.toInt()) as T
+            is Long -> (value - baseValue.toLong()) as T
+            is Float -> (value - baseValue.toFloat()) as T
+            is Double -> (value - baseValue.toDouble()) as T
+            is Short -> (value - baseValue.toShort()).toShort() as T
+            is Byte -> (value - baseValue.toByte()).toByte() as T
+            else -> throw IllegalArgumentException("Unsupported type: ${value::class.simpleName}")
         }
     }
 }

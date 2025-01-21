@@ -37,8 +37,11 @@ import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import java.time.Instant
+import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -125,8 +128,12 @@ class LogsRepositoryImpl @Inject constructor(
                 Timber.w("No HealthConnect records inserted")
             } else {
                 val sessionHCId = insertedIds[0]
+                val formatter = DateTimeFormatter.ofPattern("MMM d, yyyy - h:mma")
+                val now = Instant.now().truncatedTo(ChronoUnit.MINUTES) // Truncate to the nearest earlier hour
+                val zonedNow = ZonedDateTime.ofInstant(now, ZoneId.systemDefault()) // Convert to ZonedDateTime
+                val title = "${zonedNow.format(formatter)} - Indoor Cycling"
                 val sweatlog = SweatLog(
-                    title = "Indoor Cycling",
+                    title = title,
                     connectId = sessionHCId,
                     workoutData = workout.asSummary()
                 )
@@ -141,16 +148,9 @@ fun WorkoutSession.records(zoneOffset: ZoneOffset): List<Record> {
     val segments = mutableListOf<ExerciseSegment>()
     val segmentLevels = mutableListOf<Int>()
     for (segment in this.segments) {
-        // make sure endTime is after startTime in millis precision, else HC pukes
-        val startMs = segment.startTime.truncatedTo(ChronoUnit.MILLIS)
-        val endMs = if (segment.endTime.truncatedTo(ChronoUnit.MILLIS).isAfter(startMs)) {
-                segment.endTime.truncatedTo(ChronoUnit.MILLIS)
-            } else {
-                segment.endTime.plus(1, ChronoUnit.MILLIS)
-            }
         segments.add(
-            ExerciseSegment(startTime = startMs,
-                endTime = endMs,
+            ExerciseSegment(startTime = segment.range().start,
+                endTime = segment.range().endInclusive,
                 segmentType = ExerciseSegment.EXERCISE_SEGMENT_TYPE_BIKING_STATIONARY,
                 repetitions = 1
             )
@@ -160,9 +160,9 @@ fun WorkoutSession.records(zoneOffset: ZoneOffset): List<Record> {
     }
 
 
-    val exerciseSession =  ExerciseSessionRecord(startTime = this.sessionSegment.startTime.truncatedTo(ChronoUnit.MILLIS),
+    val exerciseSession =  ExerciseSessionRecord(startTime = this.sessionSegment.range().start,
             startZoneOffset = zoneOffset,
-            endTime = this.sessionSegment.endTime.truncatedTo(ChronoUnit.MILLIS),
+            endTime = this.sessionSegment.range().endInclusive,
             endZoneOffset = zoneOffset,
             exerciseType = ExerciseSessionRecord.EXERCISE_TYPE_BIKING_STATIONARY,
             title = "Indoor Cycling",
@@ -173,14 +173,24 @@ fun WorkoutSession.records(zoneOffset: ZoneOffset): List<Record> {
     return listOf(exerciseSession) + records
 }
 
+fun WorkoutSegment.range(): ClosedRange<Instant> {
+    val correctedStart = this.startTime.truncatedTo(ChronoUnit.MILLIS)
+    val correctedEnd = if (this.endTime.truncatedTo(ChronoUnit.MILLIS).isAfter(correctedStart)) {
+        this.endTime.truncatedTo(ChronoUnit.MILLIS)
+    } else {
+        this.endTime.plus(1, ChronoUnit.MILLIS)
+    }
+    return correctedStart..correctedEnd
+}
+
 
 fun WorkoutSegment.records(zoneOffset: ZoneOffset): List<Record> {
 
     val records = mutableListOf<Record>(
         SpeedRecord(
-            startTime = this.startTime.truncatedTo(ChronoUnit.MILLIS),
+            startTime = this.range().start,
             startZoneOffset = zoneOffset,
-            endTime = this.endTime.truncatedTo(ChronoUnit.MILLIS),
+            endTime = this.range().endInclusive,
             endZoneOffset = zoneOffset,
             samples = listOf(
                 SpeedRecord.Sample(
@@ -190,40 +200,40 @@ fun WorkoutSegment.records(zoneOffset: ZoneOffset): List<Record> {
             ),
         ),
         CyclingPedalingCadenceRecord(
-            startTime = this.startTime.truncatedTo(ChronoUnit.MILLIS),
+            startTime = this.range().start,
             startZoneOffset = zoneOffset,
-            endTime = this.endTime.truncatedTo(ChronoUnit.MILLIS),
+            endTime = this.range().endInclusive,
             endZoneOffset = zoneOffset,
             samples = listOf(
                 CyclingPedalingCadenceRecord.Sample(
-                    time = this.startTime.truncatedTo(ChronoUnit.MILLIS),
+                    time = this.range().start,
                     revolutionsPerMinute = this.data.avgCadence!!
                 )
             ),
         ),
         DistanceRecord(
-            startTime = this.startTime.truncatedTo(ChronoUnit.MILLIS),
+            startTime = this.range().start,
             startZoneOffset = zoneOffset,
-            endTime = this.endTime.truncatedTo(ChronoUnit.MILLIS),
+            endTime = this.range().endInclusive,
             endZoneOffset = zoneOffset,
             distance = this.data.distance!!.miles,
         ),
         PowerRecord(
-            startTime = this.startTime.truncatedTo(ChronoUnit.MILLIS),
+            startTime = this.range().start,
             startZoneOffset = zoneOffset,
-            endTime = this.endTime.truncatedTo(ChronoUnit.MILLIS),
+            endTime = this.range().endInclusive,
             endZoneOffset = zoneOffset,
             samples = listOf(
                 PowerRecord.Sample(
-                    time = this.startTime.truncatedTo(ChronoUnit.MILLIS),
+                    time = this.range().start,
                     power = this.data.avgPower!!.watts
                 )
             )
         ),
         TotalCaloriesBurnedRecord(
-            startTime = this.startTime.truncatedTo(ChronoUnit.MILLIS),
+            startTime = this.range().start,
             startZoneOffset = zoneOffset,
-            endTime = this.endTime.truncatedTo(ChronoUnit.MILLIS),
+            endTime = this.range().endInclusive,
             endZoneOffset = zoneOffset,
             energy = this.data.totalEnergy!!.kilocalories
 
@@ -233,13 +243,13 @@ fun WorkoutSegment.records(zoneOffset: ZoneOffset): List<Record> {
     // check to see if we were optionally collecting Heartrate
     if (this.data.avgHeartrate != null) {
         records + HeartRateRecord(
-            startTime = this.startTime,
+            startTime = this.range().start,
             startZoneOffset = zoneOffset,
-            endTime = this.endTime,
+            endTime = this.range().endInclusive,
             endZoneOffset = zoneOffset,
             samples = listOf(
                 HeartRateRecord.Sample(
-                    time = this.startTime,
+                    time = this.range().start,
                     beatsPerMinute = this.data.avgHeartrate!!.toLong()
                 )
             )
