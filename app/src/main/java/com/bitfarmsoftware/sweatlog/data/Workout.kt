@@ -25,6 +25,7 @@ import kotlin.math.roundToLong
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
+import kotlin.time.toKotlinDuration
 
 
 class Workout@AssistedInject constructor(
@@ -44,9 +45,10 @@ class Workout@AssistedInject constructor(
     val workoutData: Flow<WorkoutData> get() = _workoutData.flatMapLatest { it }
     private val _workoutData = MutableStateFlow<Flow<WorkoutData>>(emptyFlow())
 
-    val session: WorkoutSession = WorkoutSession()
+    lateinit var session: WorkoutSession
 
     suspend fun start() {
+        session = WorkoutSession()
         _workoutData.value =
             accumulatedFlow(serviceProvider.getService().startTrainingSession())
     }
@@ -56,10 +58,15 @@ class Workout@AssistedInject constructor(
         serviceProvider.getService().stopTrainingSession()
     }
 
+    /*
+    Scan takes each reading from the bike data flow, turns it into a WorkoutData object,
+     and accumulates it into the WorkoutSession.
+    Then the map function returns the accumulated result from the WorkoutSession
+     */
     private fun accumulatedFlow(bikeDataFlow: Flow<IndoorBikeData>): Flow<WorkoutData>{
         return bikeDataFlow.scan(session){ acc, value ->
             acc.accumulate(value.asWorkoutData())
-        }.map {it.workoutData}
+        }.map {it.sessionWorkoutData}
             .onStart { Timber.i("Workout:: workoutData flow started") }
             .onCompletion { Timber.i("Workout:: workoutData flow completed") }
     }
@@ -73,7 +80,7 @@ class WorkoutSession() {
     }
 
     var sessionSegment: WorkoutSegment = WorkoutSegment()
-    val workoutData: WorkoutData get() = sessionSegment.data
+    val sessionWorkoutData: WorkoutData get() = sessionSegment.data
 
     private lateinit var currentSegment: WorkoutSegment
 
@@ -84,45 +91,54 @@ class WorkoutSession() {
     val segments = mutableListOf<WorkoutSegment>()
 
     fun accumulate(workoutData: WorkoutData): WorkoutSession{
-        sessionSegment.accumulate(workoutData)
         if (startNewSegment(workoutData)){
-            // handle initial state where we don't yet have a currentSegment holding the last received workoutData.
-            val lastWorkoutData = if (::currentSegment.isInitialized) {
-                currentSegment.data
-            } else {
-                WorkoutData()
-            }
-            currentSegment = WorkoutSegment(lastWorkoutData)
+            currentSegment = WorkoutSegment(sessionWorkoutData)
             segments.add(currentSegment)
         }
+        sessionSegment.accumulate(workoutData)
         currentSegment.accumulate(workoutData)
         sessionSegment.endTime = currentSegment.endTime
 
         return this
     }
 
+    /*
+    Start new WorkoutSegment when
+    * Not initialized - it's the first segment
+    * The resitance changes - this is the main case except:
+    ** to protect against quickly changing resistance values (machine sensitivity issue)
+    ** wait at least 5 seconds before starting a new segment
+    * After 15 minutes a new segment is always created, to report metrics in 15 min increments.
+    //TODO allow user to configure the max segment time.
+     */
     private fun startNewSegment(workoutData: WorkoutData): Boolean{
         return !this::currentSegment.isInitialized
-                ||(currentSegment.data.resistance != workoutData.resistance)
+                ||(currentSegment.data.resistance != workoutData.resistance
+                && currentSegment.duration().inWholeSeconds > 5)
                 || Instant.now().isAfter(currentSegment.startTime.plus(MAX_SEGMENT_TIME.toJavaDuration()))
     }
 
 }
 
 
-class WorkoutSegment(private val initialState: WorkoutData = WorkoutData()){
+class WorkoutSegment(initialState: WorkoutData = WorkoutData()){
 
-    lateinit var startTime: Instant
-    lateinit var endTime: Instant
+    val startTime: Instant = Instant.now()
+    var endTime: Instant = Instant.now()
 
     private val accumulator: WorkoutDataAccumulator = WorkoutDataAccumulator(initialState)
     val data get() = accumulator.value
 
     fun accumulate(workoutData: WorkoutData){
-        if (!this::startTime.isInitialized) startTime = Instant.now()
 
         accumulator.accumulate(workoutData)
         endTime = Instant.now()
+    }
+
+    fun duration(): Duration {
+        return java.time.Duration.between(startTime, endTime)
+            .toKotlinDuration()
+
     }
 }
 
@@ -134,6 +150,9 @@ class WorkoutDataAccumulator(private val initialState: WorkoutData) {
     private val cadenceAccum = NumberAccumulator<Double>()
     private val powerAccum = NumberAccumulator<Int>()
     private val heartrateAccum = NumberAccumulator<Int>()
+    private val initialDistance = initialState.distance ?: 0.0
+    private val initialEnergy = initialState.totalEnergy ?: 0
+    private val initialTime = initialState.elapsedTime ?: 0
 
 
     fun accumulate(workoutData: WorkoutData): WorkoutDataAccumulator{
@@ -144,9 +163,9 @@ class WorkoutDataAccumulator(private val initialState: WorkoutData) {
 
         // These values are accumulated already in the IndoorBikeData provided by the device.
         // Only report the delta of the value that was observed during this segment.
-        val distanceDelta = workoutData.distance?.let { it - (initialState.distance ?: 0.0) }?: 0.0
-        val energyDelta = workoutData.totalEnergy?.let { it - (initialState.totalEnergy ?: 0) }?: 0
-        val timeDelta = workoutData.elapsedTime?.let { it - (initialState.elapsedTime ?: 0) }?: 0
+        val distanceDelta = workoutData.distance?.let { it - initialDistance }?: 0.0
+        val energyDelta = workoutData.totalEnergy?.let { it - initialEnergy }?: 0
+        val timeDelta = workoutData.elapsedTime?.let { it - initialTime }?: 0
 
         value = workoutData.copy(
             minSpeed = speedAccum.min,
