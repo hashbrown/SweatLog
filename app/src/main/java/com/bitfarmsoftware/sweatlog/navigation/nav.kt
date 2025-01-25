@@ -58,6 +58,7 @@ enum class TopLevelDestination(
 @Composable
 fun SLNavHost(
     appState: SLAppState,
+    onHandleBackPress: () -> Unit,
     onShowSnackbar: suspend (String, String?) -> Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -69,6 +70,7 @@ fun SLNavHost(
     ) {
         logsSection(
             navController,
+            onHandleBackPress,
             modifier
         )
         composable<SettingsRoute> {

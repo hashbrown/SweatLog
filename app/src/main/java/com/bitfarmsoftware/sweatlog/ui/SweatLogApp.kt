@@ -6,19 +6,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FabPosition
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration.Short
@@ -27,13 +21,9 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult.ActionPerformed
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.adaptive.WindowAdaptiveInfo
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,14 +31,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
-import com.bitfarmsoftware.sweatlog.data.UserDataRepository
 import com.bitfarmsoftware.sweatlog.navigation.SLNavHost
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
@@ -61,6 +47,7 @@ import kotlin.reflect.KClass
 fun SLApp(
     appState: SLAppState,
     startBLEService: () -> Unit,
+    exitApp: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
 
@@ -83,7 +70,7 @@ fun SLApp(
             LaunchedEffect(Unit) {
                 startBLEService()
             }
-            SLAppView(appState, modifier)
+            SLAppView(appState, exitApp, modifier)
         }
 
         permissionsState.shouldShowRationale -> {
@@ -105,6 +92,7 @@ fun SLApp(
 @Composable
 internal fun SLAppView(
     appState: SLAppState,
+    exitApp: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val currentDestination = appState.currentDestination
@@ -113,6 +101,15 @@ internal fun SLAppView(
     var showSettingsDialog by rememberSaveable { mutableStateOf(false) }
     val savedDevices = appState.userData.savedDevices
     showSettingsDialog = (savedDevices.isEmpty())
+
+    var showConfirmExitDialog by remember { mutableStateOf(false) }
+
+    if (showConfirmExitDialog) {
+        ConfirmDialog(
+            onConfirm = { exitApp() },
+            onDismiss = { showConfirmExitDialog = false }
+        )
+    }
 
     Timber.i("Composing SLAppView, savedDevices=${savedDevices.isNotEmpty()}, showSettingDialog=${showSettingsDialog}")
 
@@ -174,6 +171,7 @@ internal fun SLAppView(
                 ) {
                     SLNavHost(
                         appState = appState,
+                        onHandleBackPress = { showConfirmExitDialog = true },
                         onShowSnackbar = { message, action ->
                             snackbarHostState.showSnackbar(
                                 message = message,

@@ -31,12 +31,14 @@ fun NavController.navigateToLog(logId: String, navOptions: NavOptionsBuilder.() 
 
 fun NavGraphBuilder.logsSection(
     navController: NavController,
+    onHandleBackPress: () -> Unit,
     modifier: Modifier
 ) {
     navigation<LogsBaseRoute>(startDestination = LogsRoute) {
         composable<LogsRoute> {
             LogsScreen(
                 onLogClick = navController::navigateToLog,
+                onHandleBackPress = onHandleBackPress,
                 modifier = modifier
             )
         }

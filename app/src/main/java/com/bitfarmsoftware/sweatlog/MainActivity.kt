@@ -12,6 +12,7 @@ import com.bitfarmsoftware.sweatlog.ui.SLApp
 import com.bitfarmsoftware.sweatlog.ui.rememberSLAppState
 import com.bitfarmsoftware.sweatlog.ui.theme.SweatLogTheme
 import dagger.hilt.android.AndroidEntryPoint
+import timber.log.Timber
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -29,15 +30,25 @@ class MainActivity : ComponentActivity() {
                 val intent = Intent(this, BLEDeviceServiceImpl::class.java)
                 ContextCompat.startForegroundService(this, intent)
             }
+
+            val exitApp = {
+                Timber.i("Exiting app")
+                val intent = Intent(this, BLEDeviceServiceImpl::class.java)
+                stopService(intent)
+                Timber.i("Calling finish()")
+                finish()
+            }
             SweatLogTheme {
-                SLApp(appState, startBLEService)
+                SLApp(appState, startBLEService, exitApp)
             }
         }
     }
 
     override fun onDestroy() {
+        Timber.i("MainActivity onDestroy()")
         super.onDestroy()
         val serviceIntent = Intent(this, BLEDeviceServiceImpl::class.java)
+        Timber.i("Stopping service, again")
         stopService(serviceIntent)
     }
 }

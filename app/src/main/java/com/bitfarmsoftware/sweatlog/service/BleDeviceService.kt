@@ -87,7 +87,7 @@ class BleDeviceServiceProvider @Inject constructor(private val context: Context)
         }
         Timber.i("Starting bindService coroutine")
         Intent(context, BLEDeviceServiceImpl::class.java).also { intent ->
-            context.bindService(intent, conn, Context.BIND_AUTO_CREATE)
+            context.bindService(intent, conn, 0)
         }
     }
 }
@@ -161,6 +161,12 @@ class BLEDeviceServiceImpl @Inject constructor() : Service(), BleDeviceService {
         Timber.i("Service ONBIND()")
         return BLEDeviceServiceBinder(this@BLEDeviceServiceImpl)
     }
+
+    override fun onUnbind(intent: Intent?): Boolean {
+        Timber.i("Service ONUNBIND()")
+        return super.onUnbind(intent)
+    }
+
 
     override fun onDestroy() {
         Timber.i("Service ONDESTROY()")
