@@ -11,7 +11,6 @@ import androidx.room.Query
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverter
 import androidx.room.TypeConverters
-import com.bitfarmsoftware.sweatlog.model.WorkoutSummary
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -27,8 +26,10 @@ data class SweatLog (
 @Dao
 interface SweatLogDao {
     @Query("SELECT * FROM sweatlogs")
-    fun getAllLogs(): Flow<List<SweatLog>>
+    fun getAllSweatLogs(): Flow<List<SweatLog>>
 
+    @Query("SELECT * FROM sweatlogs WHERE id = :id")
+    fun getSweatLog(id: Int): Flow<SweatLog>
 
     @Insert
     fun insertAll(vararg sweatlogs: SweatLog)

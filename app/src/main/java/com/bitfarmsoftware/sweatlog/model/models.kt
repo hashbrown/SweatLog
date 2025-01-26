@@ -2,8 +2,10 @@ package com.bitfarmsoftware.sweatlog.model
 
 import com.bitfarmsoftware.sweatlog.data.WorkoutSegment
 import com.bitfarmsoftware.sweatlog.data.WorkoutSession
+import com.bitfarmsoftware.sweatlog.data.db.WorkoutData
+import com.bitfarmsoftware.sweatlog.data.db.WorkoutSegmentSummary
+import com.bitfarmsoftware.sweatlog.data.db.WorkoutSummary
 import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -11,45 +13,6 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import java.time.Instant
 
-
-@Serializable
-data class WorkoutData(
-    val speed: Double? = null,
-    val minSpeed: Double? = null,
-    val maxSpeed: Double? = null,
-    val avgSpeed: Double? = null,
-    val cadence: Double? = null,
-    val minCadence: Double? = null,
-    val maxCadence: Double? = null,
-    val avgCadence: Double? = null,
-    val distance: Double? = null,
-    val resistance:Int? = null,
-    val power: Int? = null,
-    val minPower: Int? = null,
-    val maxPower: Int? = null,
-    val avgPower: Int? = null,
-    val totalEnergy: Int? = null,
-    val heartrate: Int? = null,
-    val minHeartrate: Int? = null,
-    val maxHeartrate: Int? = null,
-    val avgHeartrate: Int? = null,
-    val elapsedTime: Int? = null,
-)
-
-@Serializable
-data class WorkoutSegmentSummary(
-    val startTime: @Serializable(with = InstantSerializer::class)Instant,
-    val endTime: @Serializable(with = InstantSerializer::class)Instant,
-    val data: WorkoutData
-)
-
-@Serializable
-data class WorkoutSummary(
-    val startTime: @Serializable(with = InstantSerializer::class)Instant,
-    val endTime: @Serializable(with = InstantSerializer::class)Instant,
-    val summary: WorkoutData,
-    val segments: List<WorkoutSegmentSummary>
-)
 
 fun WorkoutSession.asSummary(): WorkoutSummary {
     return WorkoutSummary(

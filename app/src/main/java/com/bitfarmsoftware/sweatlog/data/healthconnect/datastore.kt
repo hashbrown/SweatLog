@@ -16,13 +16,10 @@ import androidx.health.connect.client.records.PowerRecord
 import androidx.health.connect.client.records.SpeedRecord
 import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
 import androidx.health.connect.client.request.ReadRecordsRequest
-import androidx.health.connect.client.response.InsertRecordsResponse
 import androidx.health.connect.client.time.TimeRangeFilter
-import com.bitfarmsoftware.sweatlog.model.WorkoutData
 import timber.log.Timber
 import java.time.Instant
 import javax.inject.Inject
-import kotlin.reflect.KClass
 
 class HealthConnectDataStore @Inject constructor(private val context: Context){
 

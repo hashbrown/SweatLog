@@ -11,7 +11,7 @@ import com.bitfarmsoftware.sweatlog.data.ble.BleDeviceResource
 import com.bitfarmsoftware.sweatlog.data.db.SweatLog
 import com.bitfarmsoftware.sweatlog.model.RepoResource
 //import com.bitfarmsoftware.sweatlog.model.SweatLog
-import com.bitfarmsoftware.sweatlog.model.WorkoutData
+import com.bitfarmsoftware.sweatlog.data.db.WorkoutData
 import com.bitfarmsoftware.sweatlog.model.asWorkoutData
 import com.bitfarmsoftware.sweatlog.model.display
 import com.bitfarmsoftware.sweatlog.model.toTrainingData
@@ -19,17 +19,13 @@ import com.bitfarmsoftware.sweatlog.navigation.LogRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asFlow
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -41,8 +37,6 @@ class LogsViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
-    // Backing property to avoid state updates from other classes
-//    private val _uiState = MutableStateFlow(LogsUiState.Success(logsSample))
     // The UI collects from this StateFlow to get its state updates
     val uiState: StateFlow<LogsUiState> =
         logsRepository.sweatLogs.map { repoResource ->
@@ -83,15 +77,56 @@ sealed interface LogsUiState {
 }
 
 @HiltViewModel
-class LogViewModel @Inject constructor(
+class LogSummaryViewModel @Inject constructor(
+    logsRepository: LogsRepository,
+    savedStateHandle: SavedStateHandle,
+) : ViewModel() {
+
+    private val logId = savedStateHandle.toRoute<LogRoute>().id
+
+    val uiState: StateFlow<LogSummaryUiState> =
+        logsRepository.getSweatLog(logId.toInt()).map{ repoResource ->
+            when (repoResource) {
+                is RepoResource.Loading -> LogSummaryUiState.Loading
+                is RepoResource.None -> LogSummaryUiState.Error
+                is RepoResource.Error -> LogSummaryUiState.Error
+                is RepoResource.Success ->
+                    LogSummaryUiState.Success(
+                        repoResource.data.display()
+                    )
+            }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = LogSummaryUiState.Loading
+        )
+
+
+    override fun onCleared() {
+        super.onCleared()
+        Timber.i("LogSummaryViewModel Cleared")
+    }
+
+}
+
+sealed interface LogSummaryUiState {
+    data object Loading : LogSummaryUiState
+    data object Error : LogSummaryUiState
+    data class Success(
+        /**
+         * The list of news resources contained in this feed.
+         */
+        val sweatLog: SweatLogView,
+    ) : LogSummaryUiState
+}
+
+@HiltViewModel
+class WorkoutViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val logsRepository: LogsRepository,
     devicesRepository: DevicesRepository,
 ) : ViewModel() {
-
-
-    val logId = savedStateHandle.toRoute<LogRoute>().id
-
 
     // wrap the connectedDevice flow to emit a WaitingToConnect state when no device is yet connected.
     private val deviceState : StateFlow<DeviceState> = devicesRepository.connectedDevice
@@ -104,32 +139,6 @@ class LogViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = DeviceState.WaitingToConnect,
         )
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val uiState: StateFlow<LogUiState> = devicesRepository.connectedDevice
-                .onEach { device -> Timber.i("ViewModel flow connected device ${device.connected}") }
-                .flatMapLatest { device ->
-                    logsRepository.startNewWorkout(device)
-                        .map { repoResource ->
-                            when (repoResource) {
-                                is RepoResource.Loading -> LogUiState.Loading
-                                is RepoResource.None -> LogUiState.Loading
-                                is RepoResource.Error -> LogUiState.Loading
-                                is RepoResource.Success ->
-                                  LogUiState.Success(repoResource.data.display())
-
-                            }
-                        }.onEach {
-                            Timber.i("ViewModel recvd LogUiState: $it")
-                        }
-                }
-                .onStart { Timber.i("Workout:: uiState flow started") }
-                .onCompletion { Timber.i("Workout:: uiState flow completed") }
-                .stateIn(
-                    scope = viewModelScope,
-                    started = SharingStarted.WhileSubscribed(5_000),
-                    initialValue = LogUiState.Loading,
-                )
 
 
     /**
@@ -144,24 +153,24 @@ class LogViewModel @Inject constructor(
      *
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    val uiState2: StateFlow<LogUiState> = logsRepository.hasAllPermissions
+    val uiState: StateFlow<WorkoutUiState> = logsRepository.hasAllPermissions
         .flatMapLatest { hasPerm ->
             if (!hasPerm) {
-                flowOf(LogUiState.NeedsPermissions)
+                flowOf(WorkoutUiState.NeedsPermissions)
             } else {
                deviceState.flatMapLatest { state ->
                    when (state) {
                        is DeviceState.WaitingToConnect ->
-                           flowOf(LogUiState.Loading)
+                           flowOf(WorkoutUiState.Loading)
                        is DeviceState.Connected ->
                            logsRepository.startNewWorkout(state.device)
                                .map { repoResource ->
                                    when (repoResource) {
-                                       is RepoResource.Loading -> LogUiState.Loading
-                                       is RepoResource.None -> LogUiState.Loading
-                                       is RepoResource.Error -> LogUiState.Loading
+                                       is RepoResource.Loading -> WorkoutUiState.Loading
+                                       is RepoResource.None -> WorkoutUiState.Loading
+                                       is RepoResource.Error -> WorkoutUiState.Loading
                                        is RepoResource.Success ->
-                                           LogUiState.Success(repoResource.data.display())
+                                           WorkoutUiState.Success(repoResource.data.display())
 
                                    }
                                }
@@ -173,7 +182,7 @@ class LogViewModel @Inject constructor(
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = LogUiState.Loading,
+            initialValue = WorkoutUiState.Loading,
         )
 
     val requiredPermissions = logsRepository.requiredPermissions
@@ -207,28 +216,28 @@ private sealed interface DeviceState {
 }
 
 
-sealed interface LogUiState {
-    data object NeedsPermissions : LogUiState
-    data object Loading : LogUiState
+sealed interface WorkoutUiState {
+    data object NeedsPermissions : WorkoutUiState
+    data object Loading : WorkoutUiState
     data class Success(
         val logData: LogDataView,
-    ) : LogUiState
+    ) : WorkoutUiState
 }
 
-class FakeLogViewModel @Inject constructor(
+class FakeWorkoutViewModel @Inject constructor(
     ) : ViewModel() {
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val uiState: StateFlow<LogUiState> = SampleData.bikeData.asFlow()
+    val uiState: StateFlow<WorkoutUiState> = SampleData.bikeData.asFlow()
         .map { it.toTrainingData()}
         .map { bikeData ->
-            LogUiState.Success(bikeData.asWorkoutData().display())
+            WorkoutUiState.Success(bikeData.asWorkoutData().display())
         }
         .onEach { delay(1000) }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = LogUiState.Loading,
+            initialValue = WorkoutUiState.Loading,
         )
 }
 
@@ -241,19 +250,24 @@ data class SweatLogView(
 data class LogDataView(
     val speed: String = "",
     val avgSpeed: String = "",
+    val minSpeed: String = "",
+    val maxSpeed: String = "",
     val cadence: String = "",
     val avgCadence: String = "",
+    val minCadence: String = "",
+    val maxCadence: String = "",
     val distance: String = "",
     val resistance:String = "",
     val power: String = "",
     val avgPower: String = "",
+    val minPower: String = "",
+    val maxPower: String = "",
     val totalEnergy: String = "",
-    val energyPerHour: String = "",
-    val energyPerMinute: String = "",
     val heartrate: String = "",
-    val metabolicEquivalent: String = "",
+    val avgHeartrate: String = "",
+    val minHeartrate: String = "",
+    val maxHeartrate: String = "",
     val elapsedTime: String = "",
-    val remainingTime: String = ""
 )
 
 fun SweatLog.display(): SweatLogView {
@@ -268,13 +282,24 @@ fun WorkoutData.display(): LogDataView {
 
     return LogDataView (
         speed = this.speed?.display(1)?:0.toString(),
+        avgSpeed = this.avgSpeed?.display(1)?:0.toString(),
+        minSpeed = this.minSpeed?.display(1)?:0.toString(),
+        maxSpeed = this.maxSpeed?.display(1)?:0.toString(),
         cadence = this.cadence?.display(1)?:0.toString(),
+        avgCadence = this.avgCadence?.display(1)?:0.toString(),
+        minCadence = this.minCadence?.display(1)?:0.toString(),
+        maxCadence = this.maxCadence?.display(1)?:0.toString(),
         distance = this.distance?.display(2)?:0.toString(),
         resistance = this.resistance.toString(),
         power = this.power.toString(),
         avgPower = this.avgPower.toString(),
+        minPower = this.minPower.toString(),
+        maxPower = this.maxPower.toString(),
         totalEnergy = this.totalEnergy.toString(),
         heartrate = this.heartrate.toString(),
+        avgHeartrate = this.avgHeartrate.toString(),
+        minHeartrate = this.minHeartrate.toString(),
+        maxHeartrate = this.maxHeartrate.toString(),
         elapsedTime = formatDuration(this.elapsedTime?:0),
     )
 }

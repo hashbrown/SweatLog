@@ -15,10 +15,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.bitfarmsoftware.sweatlog.R
 import com.bitfarmsoftware.sweatlog.ui.DevicesScreen
-import com.bitfarmsoftware.sweatlog.ui.LogsScreen
 import com.bitfarmsoftware.sweatlog.ui.SLAppState
-import kotlin.reflect.KClass
 import kotlinx.serialization.Serializable
+import kotlin.reflect.KClass
 
 
 @Serializable

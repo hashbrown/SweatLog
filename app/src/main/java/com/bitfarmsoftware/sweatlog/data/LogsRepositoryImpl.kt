@@ -19,7 +19,7 @@ import com.bitfarmsoftware.sweatlog.data.db.SweatLog
 import com.bitfarmsoftware.sweatlog.data.db.SweatLogDao
 import com.bitfarmsoftware.sweatlog.data.healthconnect.HealthConnectDataStore
 import com.bitfarmsoftware.sweatlog.model.RepoResource
-import com.bitfarmsoftware.sweatlog.model.WorkoutData
+import com.bitfarmsoftware.sweatlog.data.db.WorkoutData
 import com.bitfarmsoftware.sweatlog.model.asSummary
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,7 +34,9 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.time.Instant
@@ -64,7 +66,10 @@ class LogsRepositoryImpl @Inject constructor(
     override val sweatLogs: Flow<RepoResource<List<SweatLog>>> get() = _sweatLogs
     private val _sweatLogs: Flow<RepoResource<List<SweatLog>>> = flow {
         emit(RepoResource.Loading)
-        sweatlogDao.getAllLogs().collect { logs ->
+        sweatlogDao.getAllSweatLogs()
+            .catch { cause -> Timber.e(cause, "sweatLogs flow error") }
+            .onEach { Timber.i("sweatLogs db flow emitting ${it.size} logs") }
+            .collect { logs ->
             emit(RepoResource.Success(logs))
         }
     }.catch { cause ->
@@ -88,6 +93,10 @@ class LogsRepositoryImpl @Inject constructor(
 
     override fun requestHealthConnectPermissions(): ActivityResultContract<Set<String>, Set<String>> {
         return healthConnect.requestPermissionsActivityContract()
+    }
+
+    override fun getSweatLog(id: Int): Flow<RepoResource<SweatLog>> {
+        return sweatlogDao.getSweatLog(id).map { RepoResource.Success(it) }
     }
 
 

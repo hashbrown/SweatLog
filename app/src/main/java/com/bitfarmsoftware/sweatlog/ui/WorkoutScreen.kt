@@ -34,7 +34,7 @@ import timber.log.Timber
 
 
 @Composable
-fun PermissionLauncher(viewModel: LogViewModel = hiltViewModel()) {
+fun PermissionLauncher(viewModel: WorkoutViewModel = hiltViewModel()) {
     Timber.i("launcher contract=${viewModel.permissionLauncher}")
     val launcher = rememberLauncherForActivityResult(viewModel.permissionLauncher) {
         Timber.i("launch result=${it}")
@@ -54,10 +54,10 @@ fun PermissionLauncher(viewModel: LogViewModel = hiltViewModel()) {
 fun WorkoutScreen(
     onFinishWorkout: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: LogViewModel = hiltViewModel(),
-    ) {
+    viewModel: WorkoutViewModel = hiltViewModel(),
+) {
 
-    val uiState by viewModel.uiState2.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val finishWorkout: () -> Unit = {
         viewModel.finishWorkout()
         onFinishWorkout()
@@ -71,7 +71,7 @@ fun WorkoutScreen(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun WorkoutScreen(
-    uiState: LogUiState,
+    uiState: WorkoutUiState,
 //    onShowSnackbar: suspend (String, String?) -> Boolean,
     finishWorkout: () -> Unit
  //   modifier: Modifier = Modifier,
@@ -82,7 +82,7 @@ internal fun WorkoutScreen(
     ){
 
         when (uiState) {
-            is LogUiState.Loading -> {
+            is WorkoutUiState.Loading -> {
                 Timber.i("Re-compose with LOADING state")
                 Box(modifier = Modifier.fillMaxHeight(),
                     contentAlignment = Alignment.Center) {
@@ -93,7 +93,7 @@ internal fun WorkoutScreen(
                     )
                 }
             }
-            is LogUiState.NeedsPermissions -> {
+            is WorkoutUiState.NeedsPermissions -> {
                 Timber.i("Re-compose with PERMISSIONS state")
                 Box(modifier = Modifier.fillMaxHeight(),
                     contentAlignment = Alignment.Center) {
@@ -106,7 +106,7 @@ internal fun WorkoutScreen(
 
                 PermissionLauncher()
             }
-            is LogUiState.Success -> {
+            is WorkoutUiState.Success -> {
 //                Timber.i("Re-compose with SUCCESS state")
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -210,8 +210,7 @@ fun WorkoutDataCardPreview() {
 @Composable
 fun WorkoutScreenPreview() {
 
-    val uiState = LogUiState.Success(LogDataView(power = "130", speed = "15.3", cadence="43", distance = "12.67",
+    val uiState = WorkoutUiState.Success(LogDataView(power = "130", speed = "15.3", cadence="43", distance = "12.67",
         resistance = "6", totalEnergy = "88", heartrate = "140", elapsedTime = "0:15:43"))
     WorkoutScreen(uiState, {})
 }
-

@@ -3,7 +3,7 @@ package com.bitfarmsoftware.sweatlog.data
 import com.bitfarmsoftware.sweatlog.data.ble.BleDeviceResource
 import com.bitfarmsoftware.sweatlog.data.healthconnect.HealthConnectDataStore
 import com.bitfarmsoftware.sweatlog.model.IndoorBikeData
-import com.bitfarmsoftware.sweatlog.model.WorkoutData
+import com.bitfarmsoftware.sweatlog.data.db.WorkoutData
 import com.bitfarmsoftware.sweatlog.model.asWorkoutData
 import com.bitfarmsoftware.sweatlog.service.BleDeviceServiceProvider
 import dagger.assisted.Assisted

@@ -2,7 +2,6 @@ package com.bitfarmsoftware.sweatlog.data
 
 import com.bitfarmsoftware.sweatlog.data.ble.BleDeviceResource
 import com.bitfarmsoftware.sweatlog.model.Device
-import com.bitfarmsoftware.sweatlog.model.WorkoutData
 import com.bitfarmsoftware.sweatlog.model.SavedDevice
 import com.bitfarmsoftware.sweatlog.service.BleDeviceService
 import com.bitfarmsoftware.sweatlog.service.BleDeviceServiceProvider

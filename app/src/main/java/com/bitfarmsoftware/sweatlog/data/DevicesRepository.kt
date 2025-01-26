@@ -3,7 +3,6 @@ package com.bitfarmsoftware.sweatlog.data
 import com.bitfarmsoftware.sweatlog.data.ble.BleDeviceResource
 import com.bitfarmsoftware.sweatlog.model.Device
 import com.bitfarmsoftware.sweatlog.model.SavedDevice
-import com.bitfarmsoftware.sweatlog.model.WorkoutData
 import kotlinx.coroutines.flow.Flow
 
 interface DevicesRepository {

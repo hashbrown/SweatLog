@@ -1,7 +1,6 @@
 package com.bitfarmsoftware.sweatlog.ui
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -13,13 +12,11 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navOptions
 import com.bitfarmsoftware.sweatlog.data.UserDataRepository
-import com.bitfarmsoftware.sweatlog.model.SavedDevice
 import com.bitfarmsoftware.sweatlog.model.UserData
 import com.bitfarmsoftware.sweatlog.navigation.TopLevelDestination
 import com.bitfarmsoftware.sweatlog.navigation.navigateToLogs
 import com.bitfarmsoftware.sweatlog.navigation.navigateToSettings
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.SharingStarted
 
 @Composable
 fun rememberSLAppState(

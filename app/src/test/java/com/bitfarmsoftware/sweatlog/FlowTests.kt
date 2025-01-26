@@ -1,15 +1,11 @@
 package com.bitfarmsoftware.sweatlog
 
-import android.bluetooth.BluetoothAdapter
-import androidx.bluetooth.BluetoothDevice
-import com.bitfarmsoftware.sweatlog.data.ble.BleDeviceResource
 import com.bitfarmsoftware.sweatlog.model.Device
 import com.bitfarmsoftware.sweatlog.model.SavedDevice
 import com.bitfarmsoftware.sweatlog.ui.LogDataView
-import com.bitfarmsoftware.sweatlog.ui.LogUiState
+import com.bitfarmsoftware.sweatlog.ui.WorkoutUiState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -17,7 +13,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.newSingleThreadContext
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -25,7 +20,6 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
-import org.junit.Rule
 import org.junit.Test
 import kotlin.test.assertIs
 
@@ -75,18 +69,18 @@ class FlowTests {
         val flatmapFlow = permissionFlow.flatMapLatest { hasPerm ->
 
             if (!hasPerm) {
-                flowOf(LogUiState.NeedsPermissions)
+                flowOf(WorkoutUiState.NeedsPermissions)
             } else {
                 deviceFlow.flatMapLatest { state ->
 
                     when (state) {
                         is DeviceState.WaitingToConnect ->
-                            flowOf(LogUiState.Loading)
+                            flowOf(WorkoutUiState.Loading)
 
                         is DeviceState.Connected ->
 
                             trainingFlow.map { logData ->
-                                LogUiState.Success(LogDataView(power = logData.power, speed = "15"))
+                                WorkoutUiState.Success(LogDataView(power = logData.power, speed = "15"))
                             }
                     }
 
@@ -104,10 +98,10 @@ class FlowTests {
             val flatmapResult = flatmapFlow
                 .onEach({System.out.println(it)}).toList()
             assertEquals(5, flatmapResult.size)
-            assertEquals(LogUiState.NeedsPermissions, flatmapResult.get(0))
-            assertEquals(LogUiState.Loading, flatmapResult.get(1))
+            assertEquals(WorkoutUiState.NeedsPermissions, flatmapResult.get(0))
+            assertEquals(WorkoutUiState.Loading, flatmapResult.get(1))
             val success = flatmapResult.get(2)
-            assertIs<LogUiState.Success>(success)
+            assertIs<WorkoutUiState.Success>(success)
             assertEquals("15", success.logData.speed)
         }
     }

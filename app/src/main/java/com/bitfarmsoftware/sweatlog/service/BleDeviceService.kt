@@ -13,7 +13,6 @@ import android.content.pm.ServiceInfo
 import android.os.Binder
 import android.os.IBinder
 import androidx.bluetooth.BluetoothLe
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
@@ -21,7 +20,6 @@ import com.bitfarmsoftware.sweatlog.data.UserDataRepository
 import com.bitfarmsoftware.sweatlog.data.ble.BleDeviceResource
 import com.bitfarmsoftware.sweatlog.model.IndoorBikeData
 import com.bitfarmsoftware.sweatlog.model.SavedDevice
-import com.bitfarmsoftware.sweatlog.model.WorkoutData
 import com.bitfarmsoftware.sweatlog.model.toTrainingData
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -38,13 +36,11 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEmpty
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import timber.log.Timber
 import javax.inject.Inject
 import kotlin.coroutines.resume
