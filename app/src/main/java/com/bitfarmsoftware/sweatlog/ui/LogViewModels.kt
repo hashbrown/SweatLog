@@ -12,6 +12,7 @@ import com.bitfarmsoftware.sweatlog.data.db.SweatLog
 import com.bitfarmsoftware.sweatlog.model.RepoResource
 //import com.bitfarmsoftware.sweatlog.model.SweatLog
 import com.bitfarmsoftware.sweatlog.data.db.WorkoutData
+import com.bitfarmsoftware.sweatlog.data.db.WorkoutSegmentSummary
 import com.bitfarmsoftware.sweatlog.model.asWorkoutData
 import com.bitfarmsoftware.sweatlog.model.display
 import com.bitfarmsoftware.sweatlog.model.toTrainingData
@@ -29,6 +30,11 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.time.Instant
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 
 @HiltViewModel
@@ -244,7 +250,16 @@ class FakeWorkoutViewModel @Inject constructor(
 data class SweatLogView(
     val id: String,
     val title: String,
-    val logData: LogDataView
+    val startTime: String,
+    val endTime: String,
+    val summary: LogDataView,
+    val segments: List<WorkoutSegmentView>
+)
+
+data class WorkoutSegmentView(
+    val startTime: String,
+    val endTime: String,
+    val data: LogDataView,
 )
 
 data class LogDataView(
@@ -274,7 +289,20 @@ fun SweatLog.display(): SweatLogView {
     return SweatLogView (
         id = this.id.toString(),
         title = this.title,
-        logData = this.workoutData.summary.display()
+        startTime = this.workoutData.startTime.display(),
+        endTime = this.workoutData.endTime.display(),
+        summary = this.workoutData.summary.display(),
+        segments = this.workoutData.segments.map {
+            it.display()
+        }
+    )
+}
+
+fun WorkoutSegmentSummary.display(): WorkoutSegmentView {
+    return WorkoutSegmentView(
+        startTime = this.startTime.display(),
+        endTime = this.endTime.display(),
+        data = this.data.display(),
     )
 }
 
@@ -309,4 +337,10 @@ fun formatDuration(seconds: Int): String {
     val minutes = (seconds % 3600) / 60
     val secs = seconds % 60
     return "%d:%02d:%02d".format(hours, minutes, secs)
+}
+
+fun Instant.display(): String {
+    val formatter = DateTimeFormatter.ofPattern("HH:mma")
+    val zonedNow = ZonedDateTime.ofInstant(this, ZoneId.systemDefault()) // Convert to ZonedDateTime
+    return zonedNow.format(formatter)
 }

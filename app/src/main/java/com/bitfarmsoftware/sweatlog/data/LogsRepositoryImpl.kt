@@ -1,6 +1,7 @@
 package com.bitfarmsoftware.sweatlog.data
 
 import androidx.activity.result.contract.ActivityResultContract
+import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
 import androidx.health.connect.client.records.CyclingPedalingCadenceRecord
 import androidx.health.connect.client.records.DistanceRecord
 import androidx.health.connect.client.records.ExerciseSegment
@@ -195,6 +196,8 @@ fun WorkoutSegment.range(): ClosedRange<Instant> {
 
 fun WorkoutSegment.records(zoneOffset: ZoneOffset): List<Record> {
 
+    val activeCalories = this.data.totalEnergy!! - (this.duration().inWholeMinutes * .60)
+
     val records = mutableListOf<Record>(
         SpeedRecord(
             startTime = this.range().start,
@@ -246,20 +249,29 @@ fun WorkoutSegment.records(zoneOffset: ZoneOffset): List<Record> {
             endZoneOffset = zoneOffset,
             energy = this.data.totalEnergy!!.kilocalories
 
+        ),
+        ActiveCaloriesBurnedRecord(
+            startTime = this.range().start,
+            startZoneOffset = zoneOffset,
+            endTime = this.range().endInclusive,
+            endZoneOffset = zoneOffset,
+            energy = activeCalories.kilocalories
+
         )
     )
 
     // check to see if we were optionally collecting Heartrate
     if (this.data.avgHeartrate != null) {
-        records + HeartRateRecord(
-            startTime = this.range().start,
-            startZoneOffset = zoneOffset,
-            endTime = this.range().endInclusive,
-            endZoneOffset = zoneOffset,
-            samples = listOf(
-                HeartRateRecord.Sample(
-                    time = this.range().start,
-                    beatsPerMinute = this.data.avgHeartrate!!.toLong()
+        records.add(HeartRateRecord(
+                startTime = this.range().start,
+                startZoneOffset = zoneOffset,
+                endTime = this.range().endInclusive,
+                endZoneOffset = zoneOffset,
+                samples = listOf(
+                    HeartRateRecord.Sample(
+                        time = this.range().start,
+                        beatsPerMinute = this.data.avgHeartrate!!.toLong()
+                    )
                 )
             )
         )

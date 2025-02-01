@@ -78,6 +78,7 @@ class BleDeviceServiceProvider @Inject constructor(private val context: Context)
                 continuation.resume(binder.service)
             }
             override fun onServiceDisconnected(name: ComponentName?) {
+                Timber.i("Binder: onServiceDisconnected")
             }
 
         }
@@ -97,7 +98,6 @@ class BLEDeviceServiceImpl @Inject constructor() : Service(), BleDeviceService {
     companion object {
         private const val CHANNEL_ID = "BLEDeviceServiceChannel"
         private const val NOTIFICATION_ID = 100
-        private var isRunning = false // Singleton flag for the process lifetime
     }
 
     @Inject
@@ -123,6 +123,9 @@ class BLEDeviceServiceImpl @Inject constructor() : Service(), BleDeviceService {
     private var connectJob: Job? = null
     private var autoconnectJob: Job? = null
     private var workoutJob: Job? = null
+
+    private var isRunning = false
+
 
     override fun onCreate() {
         super.onCreate()

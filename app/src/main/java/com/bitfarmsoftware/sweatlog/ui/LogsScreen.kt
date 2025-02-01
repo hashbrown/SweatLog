@@ -134,7 +134,7 @@ fun LogSummaryCard(log: SweatLogView,
 //            Spacer(modifier = Modifier.height(4.dp).background(Color.Red))
 
             Text(
-                    text = "time: ${log.logData.elapsedTime}  avg power: ${log.logData.avgPower}  calories: ${log.logData.totalEnergy}",
+                    text = "time: ${log.summary.elapsedTime}  avg power: ${log.summary.avgPower}  calories: ${log.summary.totalEnergy}",
                     modifier = Modifier.padding(all = 4.dp),
                     style = MaterialTheme.typography.bodyMedium
                 )

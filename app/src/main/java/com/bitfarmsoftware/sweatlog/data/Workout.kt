@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.scan
 import timber.log.Timber
+import java.time.Clock
 import java.time.Instant
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
@@ -32,9 +33,9 @@ class Workout@AssistedInject constructor(
     private val healthConnect: HealthConnectDataStore,
     private val serviceProvider: BleDeviceServiceProvider,
     @Assisted
-    private val device: BleDeviceResource
+    private val device: BleDeviceResource,
 
-) {
+    ) {
 
     @AssistedFactory
     interface WorkoutFactory {
@@ -74,12 +75,12 @@ class Workout@AssistedInject constructor(
 }
 
 
-class WorkoutSession() {
+class WorkoutSession (private val clock: Clock = Clock.systemDefaultZone()) {
     companion object {
         val MAX_SEGMENT_TIME: Duration = 15.minutes
     }
 
-    var sessionSegment: WorkoutSegment = WorkoutSegment()
+    var sessionSegment: WorkoutSegment = WorkoutSegment(clock=clock)
     val sessionWorkoutData: WorkoutData get() = sessionSegment.data
 
     private lateinit var currentSegment: WorkoutSegment
@@ -92,7 +93,7 @@ class WorkoutSession() {
 
     fun accumulate(workoutData: WorkoutData): WorkoutSession{
         if (startNewSegment(workoutData)){
-            currentSegment = WorkoutSegment(sessionWorkoutData)
+            currentSegment = WorkoutSegment(sessionWorkoutData, clock)
             segments.add(currentSegment)
         }
         sessionSegment.accumulate(workoutData)
@@ -105,7 +106,7 @@ class WorkoutSession() {
     /*
     Start new WorkoutSegment when
     * Not initialized - it's the first segment
-    * The resitance changes - this is the main case except:
+    * The resistance changes - this is the main case except:
     ** to protect against quickly changing resistance values (machine sensitivity issue)
     ** wait at least 5 seconds before starting a new segment
     * After 15 minutes a new segment is always created, to report metrics in 15 min increments.
@@ -114,36 +115,39 @@ class WorkoutSession() {
     private fun startNewSegment(workoutData: WorkoutData): Boolean{
         return !this::currentSegment.isInitialized
                 ||(currentSegment.data.resistance != workoutData.resistance
-                && currentSegment.duration().inWholeSeconds > 5)
-                || Instant.now().isAfter(currentSegment.startTime.plus(MAX_SEGMENT_TIME.toJavaDuration()))
+                && currentSegment.duration(Instant.now(clock)).inWholeSeconds > 10)
+                || Instant.now(clock).isAfter(currentSegment.startTime.plus(MAX_SEGMENT_TIME.toJavaDuration()))
     }
 
 }
 
 
-class WorkoutSegment(initialState: WorkoutData = WorkoutData()){
+class WorkoutSegment(initialState: WorkoutData = WorkoutData(),
+                     private val clock: Clock = Clock.systemDefaultZone()){
 
-    val startTime: Instant = Instant.now()
-    var endTime: Instant = Instant.now()
+    val startTime: Instant = Instant.now(clock)
+    var endTime: Instant = Instant.now(clock)
+    var resistance: Int = 0
 
     private val accumulator: WorkoutDataAccumulator = WorkoutDataAccumulator(initialState)
-    val data get() = accumulator.value
+    val data get() = accumulator.value.copy(resistance = resistance) // ensure Segment resistance value preserved
 
     fun accumulate(workoutData: WorkoutData){
-
+        // set resistance for Segment on first value
+        if (workoutData.resistance != null && resistance == 0) resistance = workoutData.resistance
         accumulator.accumulate(workoutData)
-        endTime = Instant.now()
+        endTime = Instant.now(clock)
     }
 
-    fun duration(): Duration {
-        return java.time.Duration.between(startTime, endTime)
+    fun duration(now: Instant = endTime): Duration {
+        return java.time.Duration.between(startTime, now)
             .toKotlinDuration()
 
     }
 }
 
 
-class WorkoutDataAccumulator(private val initialState: WorkoutData) {
+class WorkoutDataAccumulator(initialState: WorkoutData) {
     var value: WorkoutData = WorkoutData()
 
     private val speedAccum = NumberAccumulator<Double>()
@@ -182,7 +186,7 @@ class WorkoutDataAccumulator(private val initialState: WorkoutData) {
             avgHeartrate = heartrateAccum.avg,
             distance = distanceDelta,
             totalEnergy = energyDelta,
-            elapsedTime = timeDelta
+            elapsedTime = timeDelta,
         )
         return this
     }
@@ -199,23 +203,19 @@ open class NumberAccumulator<T : Number> {
     var avg: T? = null
 
     fun accumulate(value: T) {
-        val adjValue = adjustedValue(value)
-        sum += adjValue.toDouble()
+        sum += value.toDouble()
         count++
-        if (count == 1) { avg = adjValue}
+        if (count == 1) { avg = value}
         if (count % 5 == 0) avg = coerceAvgToType(sum / count)
 
-        if (min == null || adjValue.toDouble() < min!!.toDouble()) {
-            min = adjValue
+        if (min == null || value.toDouble() < min!!.toDouble()) {
+            min = value
         }
-        if (max == null || adjValue.toDouble() > max!!.toDouble()) {
-            max = adjValue
+        if (max == null || value.toDouble() > max!!.toDouble()) {
+            max = value
         }
     }
 
-    open fun adjustedValue(value: T): T {
-        return value
-    }
 
     @Suppress("UNCHECKED_CAST")
     private fun coerceAvgToType(value: Double): T? {
@@ -230,17 +230,3 @@ open class NumberAccumulator<T : Number> {
     }
 }
 
-@Suppress("UNCHECKED_CAST")
-class DeltaNumberAccumulator<T : Number> (private val baseValue: T): NumberAccumulator<T>() {
-    override fun adjustedValue(value: T): T {
-        return when (value) {
-            is Int -> (value - baseValue.toInt()) as T
-            is Long -> (value - baseValue.toLong()) as T
-            is Float -> (value - baseValue.toFloat()) as T
-            is Double -> (value - baseValue.toDouble()) as T
-            is Short -> (value - baseValue.toShort()).toShort() as T
-            is Byte -> (value - baseValue.toByte()).toByte() as T
-            else -> throw IllegalArgumentException("Unsupported type: ${value::class.simpleName}")
-        }
-    }
-}

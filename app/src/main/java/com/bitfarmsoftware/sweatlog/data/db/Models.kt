@@ -5,6 +5,20 @@ import kotlinx.serialization.Serializable
 import java.time.Instant
 
 
+@Serializable
+data class WorkoutSummary(
+    val startTime: @Serializable(with = InstantSerializer::class) Instant,
+    val endTime: @Serializable(with = InstantSerializer::class) Instant,
+    val summary: WorkoutData,
+    val segments: List<WorkoutSegmentSummary>
+)
+
+@Serializable
+data class WorkoutSegmentSummary(
+    val startTime: @Serializable(with = InstantSerializer::class) Instant,
+    val endTime: @Serializable(with = InstantSerializer::class) Instant,
+    val data: WorkoutData
+)
 
 @Serializable
 data class WorkoutData(
@@ -30,17 +44,6 @@ data class WorkoutData(
     val elapsedTime: Int? = null,
 )
 
-@Serializable
-data class WorkoutSegmentSummary(
-    val startTime: @Serializable(with = InstantSerializer::class) Instant,
-    val endTime: @Serializable(with = InstantSerializer::class) Instant,
-    val data: WorkoutData
-)
 
-@Serializable
-data class WorkoutSummary(
-    val startTime: @Serializable(with = InstantSerializer::class) Instant,
-    val endTime: @Serializable(with = InstantSerializer::class) Instant,
-    val summary: WorkoutData,
-    val segments: List<WorkoutSegmentSummary>
-)
+
+

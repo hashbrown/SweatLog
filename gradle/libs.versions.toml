@@ -1,11 +1,11 @@
 [versions]
 activityCompose = "1.9.3"
 accompanist = "0.37.0"
-agp = "8.7.3"
+agp = "8.8.0"
 ble = "1.0.0-alpha02"
 composeBom = "2024.11.00"
 coreKtx = "1.15.0"
-health = "1.1.0-alpha10"
+health = "1.1.0-alpha11"
 hilt = "2.52"
 hiltNavCompose = "1.2.0"
 kotlin = "2.0.20"
@@ -13,7 +13,7 @@ kotlinxSerializationJson = "1.7.3"
 ksp = "2.0.20-1.0.25"
 lifecycleProcess = "2.8.7"
 lifecycleRuntimeKtx = "2.8.7"
-navCompose = "2.8.4"
+navCompose = "2.8.6"
 room = "2.6.1"
 
 

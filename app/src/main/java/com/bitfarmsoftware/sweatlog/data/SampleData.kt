@@ -1,7 +1,6 @@
 package com.bitfarmsoftware.sweatlog.data
 
 import com.bitfarmsoftware.sweatlog.data.ble.hexStringToByteArray
-import com.bitfarmsoftware.sweatlog.model.WorkoutData
 import com.bitfarmsoftware.sweatlog.model.SavedDevice
 
 /**

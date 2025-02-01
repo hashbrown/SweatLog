@@ -7,10 +7,12 @@ import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.HealthConnectClient.Companion.SDK_AVAILABLE
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
+import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
 import androidx.health.connect.client.records.CyclingPedalingCadenceRecord
 import androidx.health.connect.client.records.DistanceRecord
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.records.LeanBodyMassRecord
 import androidx.health.connect.client.records.Record
 import androidx.health.connect.client.records.PowerRecord
 import androidx.health.connect.client.records.SpeedRecord
@@ -30,6 +32,8 @@ class HealthConnectDataStore @Inject constructor(private val context: Context){
         HealthPermission.getReadPermission(ExerciseSessionRecord::class),
         HealthPermission.getWritePermission(TotalCaloriesBurnedRecord::class),
         HealthPermission.getReadPermission(TotalCaloriesBurnedRecord::class),
+        HealthPermission.getWritePermission(ActiveCaloriesBurnedRecord::class),
+        HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class),
         HealthPermission.getWritePermission(HeartRateRecord::class),
         HealthPermission.getReadPermission(HeartRateRecord::class),
         HealthPermission.getWritePermission(SpeedRecord::class),
@@ -39,7 +43,8 @@ class HealthConnectDataStore @Inject constructor(private val context: Context){
         HealthPermission.getWritePermission(DistanceRecord::class),
         HealthPermission.getReadPermission(DistanceRecord::class),
         HealthPermission.getWritePermission(CyclingPedalingCadenceRecord::class),
-        HealthPermission.getReadPermission(CyclingPedalingCadenceRecord::class)
+        HealthPermission.getReadPermission(CyclingPedalingCadenceRecord::class),
+        HealthPermission.getReadPermission(LeanBodyMassRecord::class)
     )
 
     var availability = mutableStateOf(false)

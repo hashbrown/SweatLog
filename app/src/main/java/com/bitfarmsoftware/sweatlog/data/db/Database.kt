@@ -25,7 +25,7 @@ data class SweatLog (
 
 @Dao
 interface SweatLogDao {
-    @Query("SELECT * FROM sweatlogs")
+    @Query("SELECT * FROM sweatlogs ORDER BY id DESC")
     fun getAllSweatLogs(): Flow<List<SweatLog>>
 
     @Query("SELECT * FROM sweatlogs WHERE id = :id")

@@ -24,11 +24,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        Timber.i("MainActivity onCreate()")
+
         setContent {
             val appState = rememberSLAppState(userDataRepo)
+            val appContext = applicationContext
             val startBLEService = {
-                val intent = Intent(this, BLEDeviceServiceImpl::class.java)
-                ContextCompat.startForegroundService(this, intent)
+                val intent = Intent(appContext, BLEDeviceServiceImpl::class.java)
+                ContextCompat.startForegroundService(appContext, intent)
             }
 
             val exitApp = {
@@ -47,8 +50,5 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         Timber.i("MainActivity onDestroy()")
         super.onDestroy()
-        val serviceIntent = Intent(this, BLEDeviceServiceImpl::class.java)
-        Timber.i("Stopping service, again")
-        stopService(serviceIntent)
     }
 }

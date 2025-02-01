@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -44,6 +47,7 @@ internal fun LogSummaryScreen(
 ) {
     Column (
         modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 8.dp)
+            .verticalScroll(rememberScrollState())
 
     ){
 
@@ -61,50 +65,7 @@ internal fun LogSummaryScreen(
             }
             is LogSummaryUiState.Success -> {
 //                Timber.i("Re-compose with SUCCESS state")
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                ) {
-                    Text("Resistance: ${uiState.sweatLog.logData.resistance}")
-                    Text("Duration: ${uiState.sweatLog.logData.elapsedTime}")
-                }
-                Spacer(Modifier.size(16.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                ) {
-                    Text("Distance: ${uiState.sweatLog.logData.distance}")
-                    Text("Calories: ${uiState.sweatLog.logData.totalEnergy}")
-                }
-                Spacer(Modifier.size(16.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                ) {
-                    Text("Power: ${uiState.sweatLog.logData.minPower} -> ${uiState.sweatLog.logData.avgPower} <-${uiState.sweatLog.logData.maxPower}")
-                }
-                Spacer(Modifier.size(16.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                ) {
-                    Text("Heart Rate: ${uiState.sweatLog.logData.minHeartrate} -> ${uiState.sweatLog.logData.avgHeartrate} <-${uiState.sweatLog.logData.maxHeartrate}")
-                }
-                Spacer(Modifier.size(16.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                ) {
-                    Text("Speed: ${uiState.sweatLog.logData.minSpeed} -> ${uiState.sweatLog.logData.avgSpeed} <-${uiState.sweatLog.logData.maxSpeed}")
-                }
-                Spacer(Modifier.size(16.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                ) {
-                    Text("Cadence/RPM: ${uiState.sweatLog.logData.minCadence} -> ${uiState.sweatLog.logData.avgCadence} <-${uiState.sweatLog.logData.maxCadence}")
-                }
-
+               SessionSummary(uiState.sweatLog)
 
             }
 
@@ -112,6 +73,91 @@ internal fun LogSummaryScreen(
         }
     }
 }
+
+@Composable
+internal fun SessionSummary(sweatLog: SweatLogView) {
+    Row(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            style = MaterialTheme.typography.titleLarge,
+            text = "${sweatLog.startTime} - ${sweatLog.endTime} (${sweatLog.summary.elapsedTime})"
+        )
+    }
+    Spacer(Modifier.size(16.dp))
+    WorkoutSummary(sweatLog.summary)
+    Spacer(Modifier.size(16.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(style = MaterialTheme.typography.titleLarge,
+            text = "Workout Segments")
+    }
+    sweatLog.segments.forEachIndexed { index, segment ->
+        HorizontalDivider(color = MaterialTheme.colorScheme.primary, thickness = 2.dp)
+        SegmentSummary(segment, index)
+    }
+    HorizontalDivider(color = MaterialTheme.colorScheme.primary, thickness = 2.dp)
+
+}
+
+@Composable
+internal fun SegmentSummary(segment: WorkoutSegmentView, index: Int) {
+    Spacer(Modifier.size(8.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(style = MaterialTheme.typography.titleMedium,
+            text= "[${index + 1}] Resistance ${segment.data.resistance}")
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(style = MaterialTheme.typography.titleMedium,
+            text= " ${segment.startTime} - ${segment.endTime} (${segment.data.elapsedTime})")
+    }
+    Spacer(Modifier.size(8.dp))
+    WorkoutSummary(segment.data)
+    Spacer(Modifier.size(8.dp))
+}
+
+@Composable
+internal fun WorkoutSummary(logData: LogDataView) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(space = 16.dp, alignment = Alignment.Start),
+    ) {
+        Text("Distance: ${logData.distance}")
+        Text("Calories: ${logData.totalEnergy}")
+    }
+    Spacer(Modifier.size(8.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text("Power: ${logData.minPower} -> ${logData.avgPower} <-${logData.maxPower}")
+    }
+    Spacer(Modifier.size(8.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text("Heart Rate: ${logData.minHeartrate} -> ${logData.avgHeartrate} <-${logData.maxHeartrate}")
+    }
+    Spacer(Modifier.size(8.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text("Speed: ${logData.minSpeed} -> ${logData.avgSpeed} <-${logData.maxSpeed}")
+    }
+    Spacer(Modifier.size(8.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text("Cadence/RPM: ${logData.minCadence} -> ${logData.avgCadence} <-${logData.maxCadence}")
+    }
+
+}
+
 
 
 
