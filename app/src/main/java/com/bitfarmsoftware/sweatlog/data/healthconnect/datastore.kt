@@ -8,6 +8,7 @@ import androidx.health.connect.client.HealthConnectClient.Companion.SDK_AVAILABL
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
+import androidx.health.connect.client.records.BodyFatRecord
 import androidx.health.connect.client.records.CyclingPedalingCadenceRecord
 import androidx.health.connect.client.records.DistanceRecord
 import androidx.health.connect.client.records.ExerciseSessionRecord
@@ -17,11 +18,13 @@ import androidx.health.connect.client.records.Record
 import androidx.health.connect.client.records.PowerRecord
 import androidx.health.connect.client.records.SpeedRecord
 import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
+import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import timber.log.Timber
 import java.time.Instant
 import javax.inject.Inject
+import kotlin.reflect.KClass
 
 class HealthConnectDataStore @Inject constructor(private val context: Context){
 
@@ -44,7 +47,9 @@ class HealthConnectDataStore @Inject constructor(private val context: Context){
         HealthPermission.getReadPermission(DistanceRecord::class),
         HealthPermission.getWritePermission(CyclingPedalingCadenceRecord::class),
         HealthPermission.getReadPermission(CyclingPedalingCadenceRecord::class),
-        HealthPermission.getReadPermission(LeanBodyMassRecord::class)
+        HealthPermission.getReadPermission(WeightRecord::class),
+        HealthPermission.getReadPermission(LeanBodyMassRecord::class),
+        HealthPermission.getReadPermission(BodyFatRecord::class)
     )
 
     var availability = mutableStateOf(false)
@@ -79,6 +84,16 @@ class HealthConnectDataStore @Inject constructor(private val context: Context){
     suspend fun getExerciseSessions(start: Instant, end: Instant): List<ExerciseSessionRecord> {
         val request = ReadRecordsRequest(
             recordType = ExerciseSessionRecord::class,
+            timeRangeFilter = TimeRangeFilter.between(start, end),
+            ascendingOrder = false
+        )
+        val response = healthConnectClient.readRecords(request)
+        return response.records
+    }
+
+    suspend fun <T: Record> getRecords(recordType: KClass<T>, start: Instant, end: Instant): List<T> {
+        val request = ReadRecordsRequest(
+            recordType = recordType,
             timeRangeFilter = TimeRangeFilter.between(start, end),
             ascendingOrder = false
         )

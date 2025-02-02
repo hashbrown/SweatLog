@@ -2,6 +2,7 @@ package com.bitfarmsoftware.sweatlog.data
 
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
+import androidx.health.connect.client.records.BodyFatRecord
 import androidx.health.connect.client.records.CyclingPedalingCadenceRecord
 import androidx.health.connect.client.records.DistanceRecord
 import androidx.health.connect.client.records.ExerciseSegment
@@ -11,6 +12,7 @@ import androidx.health.connect.client.records.PowerRecord
 import androidx.health.connect.client.records.Record
 import androidx.health.connect.client.records.SpeedRecord
 import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
+import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.units.kilocalories
 import androidx.health.connect.client.units.miles
 import androidx.health.connect.client.units.milesPerHour
@@ -37,7 +39,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.time.Instant
@@ -132,7 +133,7 @@ class LogsRepositoryImpl @Inject constructor(
     private suspend fun saveWorkout(workout: WorkoutSession) {
         withContext(dbScope.coroutineContext) {
             val insertedIds =
-                healthConnect.insertRecords(workout.records(ZonedDateTime.now().offset))
+                healthConnect.insertRecords(workout.records(ZonedDateTime.now().offset, getBMRPerMinute()))
             if (insertedIds.isEmpty()) {
                 // TODO queue sync of data into healthconnect later
                 Timber.w("No HealthConnect records inserted")
@@ -151,9 +152,34 @@ class LogsRepositoryImpl @Inject constructor(
             }
         }
     }
+
+    private suspend fun getBMRPerMinute(): Double {
+        // get most recent lean mass recorded in last 2 weeks or known avg of 51 lbs.
+        val end = Instant.now()
+        val start = end.minus(14, ChronoUnit.DAYS)
+        val weightRecords = healthConnect.getRecords(WeightRecord::class, start, end)
+        val weightLbs =
+            if (weightRecords.isEmpty()) {
+                142.5
+            } else {
+                weightRecords.first().weight.inPounds
+            }
+        val bfRecords = healthConnect.getRecords(BodyFatRecord::class, start, end)
+        val bodyfatPct =
+            if (bfRecords.isEmpty()) {
+                18.0
+            } else {
+                bfRecords.first().percentage.value
+            }
+        // Katch-McArdle Formula
+        val fatMassLbs = (bodyfatPct / 100) * weightLbs
+        val leanMassLbs = weightLbs - fatMassLbs
+        val bmrPerMinute = ((21.6 * (leanMassLbs/2.205)) + 370)/24/60
+        return bmrPerMinute
+    }
 }
 
-fun WorkoutSession.records(zoneOffset: ZoneOffset): List<Record> {
+fun WorkoutSession.records(zoneOffset: ZoneOffset, bmrPerMin: Double): List<Record> {
     val records = mutableListOf<Record>()
     val segments = mutableListOf<ExerciseSegment>()
     val segmentLevels = mutableListOf<Int>()
@@ -166,7 +192,7 @@ fun WorkoutSession.records(zoneOffset: ZoneOffset): List<Record> {
             )
         )
         segmentLevels.add(segment.data.resistance!!)
-        records.addAll(segment.records(zoneOffset))
+        records.addAll(segment.records(zoneOffset, bmrPerMin))
     }
 
 
@@ -194,9 +220,9 @@ fun WorkoutSegment.range(): ClosedRange<Instant> {
 }
 
 
-fun WorkoutSegment.records(zoneOffset: ZoneOffset): List<Record> {
+fun WorkoutSegment.records(zoneOffset: ZoneOffset, bmrPerMin: Double): List<Record> {
 
-    val activeCalories = this.data.totalEnergy!! - (this.duration().inWholeMinutes * .60)
+    val activeCalories = this.data.totalEnergy!! - (this.duration().inWholeMinutes * bmrPerMin)
 
     val records = mutableListOf<Record>(
         SpeedRecord(
@@ -280,6 +306,7 @@ fun WorkoutSegment.records(zoneOffset: ZoneOffset): List<Record> {
 
     return records
 }
+
 
 
 

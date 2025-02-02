@@ -68,6 +68,7 @@ fun SLApp(
         permissionsState.allPermissionsGranted -> {
             // Start BLEDeviceService when permissions are granted
             LaunchedEffect(Unit) {
+                Timber.i("Starting BLE device service")
                 startBLEService()
             }
             SLAppView(appState, exitApp, modifier)
@@ -115,9 +116,11 @@ internal fun SLAppView(
 
 
     if (showSettingsDialog) {
-        FindDeviceDialog(
-            onDismiss = { showSettingsDialog = false },
-        )
+        Timber.i("Would have shown settings dialog")
+
+//        FindDeviceDialog(
+//            onDismiss = { showSettingsDialog = false },
+//        )
     }
 
 
