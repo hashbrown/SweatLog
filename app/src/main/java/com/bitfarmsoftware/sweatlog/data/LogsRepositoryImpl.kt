@@ -24,6 +24,8 @@ import com.bitfarmsoftware.sweatlog.data.healthconnect.HealthConnectDataStore
 import com.bitfarmsoftware.sweatlog.model.RepoResource
 import com.bitfarmsoftware.sweatlog.data.db.WorkoutData
 import com.bitfarmsoftware.sweatlog.model.asSummary
+import com.bitfarmsoftware.sweatlog.model.display
+import com.bitfarmsoftware.sweatlog.model.roundTo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -49,6 +51,8 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.pow
+import kotlin.math.round
 
 @Singleton
 class LogsRepositoryImpl @Inject constructor(
@@ -175,7 +179,8 @@ class LogsRepositoryImpl @Inject constructor(
         val fatMassLbs = (bodyfatPct / 100) * weightLbs
         val leanMassLbs = weightLbs - fatMassLbs
         val bmrPerMinute = ((21.6 * (leanMassLbs/2.205)) + 370)/24/60
-        return bmrPerMinute
+        Timber.i("Calculated BMR/min= ${bmrPerMinute.display(1)} :: weight=$weightLbs fat=$bodyfatPct lean=$leanMassLbs")
+        return bmrPerMinute.roundTo(2)
     }
 }
 
@@ -233,7 +238,7 @@ fun WorkoutSegment.records(zoneOffset: ZoneOffset, bmrPerMin: Double): List<Reco
             samples = listOf(
                 SpeedRecord.Sample(
                     time = this.startTime.truncatedTo(ChronoUnit.MILLIS),
-                    speed = this.data.avgSpeed!!.milesPerHour
+                    speed = this.data.avgSpeed!!.roundTo(1).milesPerHour
                 )
             ),
         ),
@@ -245,7 +250,7 @@ fun WorkoutSegment.records(zoneOffset: ZoneOffset, bmrPerMin: Double): List<Reco
             samples = listOf(
                 CyclingPedalingCadenceRecord.Sample(
                     time = this.range().start,
-                    revolutionsPerMinute = this.data.avgCadence!!
+                    revolutionsPerMinute = this.data.avgCadence!!.roundTo(1)
                 )
             ),
         ),
@@ -254,7 +259,7 @@ fun WorkoutSegment.records(zoneOffset: ZoneOffset, bmrPerMin: Double): List<Reco
             startZoneOffset = zoneOffset,
             endTime = this.range().endInclusive,
             endZoneOffset = zoneOffset,
-            distance = this.data.distance!!.miles,
+            distance = this.data.distance!!.roundTo(1).miles,
         ),
         PowerRecord(
             startTime = this.range().start,
@@ -281,7 +286,7 @@ fun WorkoutSegment.records(zoneOffset: ZoneOffset, bmrPerMin: Double): List<Reco
             startZoneOffset = zoneOffset,
             endTime = this.range().endInclusive,
             endZoneOffset = zoneOffset,
-            energy = activeCalories.kilocalories
+            energy = activeCalories.roundTo(2).kilocalories
 
         )
     )
@@ -306,6 +311,8 @@ fun WorkoutSegment.records(zoneOffset: ZoneOffset, bmrPerMin: Double): List<Reco
 
     return records
 }
+
+
 
 
 

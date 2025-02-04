@@ -317,7 +317,7 @@ fun WorkoutData.display(): LogDataView {
         avgCadence = this.avgCadence?.display(1)?:0.toString(),
         minCadence = this.minCadence?.display(1)?:0.toString(),
         maxCadence = this.maxCadence?.display(1)?:0.toString(),
-        distance = this.distance?.display(2)?:0.toString(),
+        distance = this.distance?.display(1)?:0.toString(),
         resistance = this.resistance.toString(),
         power = this.power.toString(),
         avgPower = this.avgPower.toString(),

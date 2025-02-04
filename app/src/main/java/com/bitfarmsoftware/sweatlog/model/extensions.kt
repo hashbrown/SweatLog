@@ -2,6 +2,8 @@ package com.bitfarmsoftware.sweatlog.model
 
 import timber.log.Timber
 import java.time.Instant
+import kotlin.math.pow
+import kotlin.math.round
 
 private const val METERS_PER_MILE = 1609.344
 
@@ -206,4 +208,9 @@ fun ByteArray.toTrainingData(): IndoorBikeData {
 
 fun Double.display(precision: Int): String {
     return String.format("%.${precision}f", this)
+}
+
+fun Double.roundTo(decimalPlaces: Int): Double {
+    val factor = 10.0.pow(decimalPlaces)
+    return round(this * factor) / factor
 }
