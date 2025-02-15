@@ -37,8 +37,8 @@ class WorkoutSessionTest {
     }
 
     @Test
-    fun `no new WorkoutSegment is created when resistance changes if not enough time passes`() {
-        val data1 = WorkoutData(resistance = 5, speed = 10.0)
+    fun `no new WorkoutSegment when resistance has not stabilized for 10 seconds`() {
+        val data1 = WorkoutData(resistance = 7, speed = 10.0)
         val data2 = WorkoutData(resistance = 7, speed = 20.0)
 
         session.accumulate(data1)
@@ -46,12 +46,12 @@ class WorkoutSessionTest {
         session.accumulate(data2)
 
         assertEquals(1, session.segments.size)
-        assertEquals(5, session.segments.last().data.resistance)
+        assertEquals(7, session.segments.last().data.resistance)
         assertEquals(20.0, session.segments.last().data.speed)
     }
 
     @Test
-    fun `no new WorkoutSegment when resistance changes back too quickly`() {
+    fun `no new WorkoutSegment when changing resistance has not stabilized for 10 seconds`() {
         val data1 = WorkoutData(resistance = 5, speed = 10.0)
         val data2 = WorkoutData(resistance = 7, speed = 20.0)
         val data3 = WorkoutData(resistance = 5, speed = 30.0)// Changes back too quickly
@@ -66,44 +66,52 @@ class WorkoutSessionTest {
         session.accumulate(data2)
 
         assertEquals(1, session.segments.size)
-        assertEquals(5, session.segments.last().data.resistance)
+        assertEquals(7, session.segments.last().data.resistance)
         assertEquals(20.0, session.segments.last().data.speed)
 
-        testClock.advance(Duration.ofSeconds(7)) // Less than 10s threshold
+        testClock.advance(Duration.ofSeconds(11)) // 10 seconds had passed but now a new value
         session.accumulate(data3)
 
-        // Should still have only one segment, as the second resistance change is ignored
         assertEquals(1, session.segments.size)
         assertEquals(5, session.segments.last().data.resistance)
         assertEquals(30.0, session.segments.last().data.speed)
     }
 
+
     @Test
     fun `new WorkoutSegment when resistance stabilizes after delay`() {
-        val data1 = WorkoutData(resistance = 5, speed = 10.0)
+        val data1 = WorkoutData(resistance = 7, speed = 10.0)
         val data2 = WorkoutData(resistance = 7, speed = 20.0)
         val data3 = WorkoutData(resistance = 7, speed = 30.0)
+        val data4 = WorkoutData(resistance = 8, speed = 40.0)
 
         session.accumulate(data1)
 
         assertEquals(1, session.segments.size)
-        assertEquals(5, session.segments.last().data.resistance)
+        assertEquals(7, session.segments.last().data.resistance)
         assertEquals(10.0, session.segments.last().data.speed)
 
-        testClock.advance(Duration.ofSeconds(1)) // Less than 10s threshold
+        testClock.advance(Duration.ofSeconds(4)) // Less than 10s threshold
         session.accumulate(data2)
 
         assertEquals(1, session.segments.size)
-        assertEquals(5, session.segments.last().data.resistance)
+        assertEquals(7, session.segments.last().data.resistance)
         assertEquals(20.0, session.segments.last().data.speed)
 
-        testClock.advance(Duration.ofSeconds(10)) // Advance past 10s threshold
-        session.accumulate(data3)
+        testClock.advance(Duration.ofSeconds(7)) // Advance past 10s threshold
+        session.accumulate(data3) // not stable until after the accumulation
 
-        assertEquals(2, session.segments.size)
+        assertEquals(1, session.segments.size)
         assertEquals(7, session.segments.last().data.resistance)
         assertEquals(30.0, session.segments.last().data.speed)
+
+        session.accumulate(data4) // not stable until after the accumulation
+
+        assertEquals(2, session.segments.size)
+        assertEquals(8, session.segments.last().data.resistance)
+        assertEquals(40.0, session.segments.last().data.speed)
     }
+
 
     @Test
     fun `new WorkoutSegment when MAX_SEGMENT_TIME is reached, even if resistance is unchanged`() {

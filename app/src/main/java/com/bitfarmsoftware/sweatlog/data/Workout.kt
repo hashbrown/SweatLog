@@ -1,14 +1,9 @@
 package com.bitfarmsoftware.sweatlog.data
 
-import com.bitfarmsoftware.sweatlog.data.ble.BleDeviceResource
-import com.bitfarmsoftware.sweatlog.data.healthconnect.HealthConnectDataStore
-import com.bitfarmsoftware.sweatlog.model.IndoorBikeData
 import com.bitfarmsoftware.sweatlog.data.db.WorkoutData
+import com.bitfarmsoftware.sweatlog.model.IndoorBikeData
 import com.bitfarmsoftware.sweatlog.model.asWorkoutData
 import com.bitfarmsoftware.sweatlog.service.BleDeviceServiceProvider
-import dagger.assisted.Assisted
-import dagger.assisted.AssistedFactory
-import dagger.assisted.AssistedInject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,22 +20,13 @@ import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import kotlin.time.toKotlinDuration
 
 
-class Workout@AssistedInject constructor(
-    private val healthConnect: HealthConnectDataStore,
-    private val serviceProvider: BleDeviceServiceProvider,
-    @Assisted
-    private val device: BleDeviceResource,
+class Workout(private val serviceProvider: BleDeviceServiceProvider) {
 
-    ) {
-
-    @AssistedFactory
-    interface WorkoutFactory {
-        fun create(device: BleDeviceResource): Workout
-    }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val workoutData: Flow<WorkoutData> get() = _workoutData.flatMapLatest { it }
@@ -115,7 +101,7 @@ class WorkoutSession (private val clock: Clock = Clock.systemDefaultZone()) {
     private fun startNewSegment(workoutData: WorkoutData): Boolean{
         return !this::currentSegment.isInitialized
                 ||(currentSegment.data.resistance != workoutData.resistance
-                && currentSegment.duration(Instant.now(clock)).inWholeSeconds > 10)
+                && currentSegment.stabilized)
                 || Instant.now(clock).isAfter(currentSegment.startTime.plus(MAX_SEGMENT_TIME.toJavaDuration()))
     }
 
@@ -127,14 +113,16 @@ class WorkoutSegment(initialState: WorkoutData = WorkoutData(),
 
     val startTime: Instant = Instant.now(clock)
     var endTime: Instant = Instant.now(clock)
-    var resistance: Int = 0
+
+    private val resistance = StableValue(clock)
+    var stabilized = resistance.stable
 
     private val accumulator: WorkoutDataAccumulator = WorkoutDataAccumulator(initialState)
-    val data get() = accumulator.value.copy(resistance = resistance) // ensure Segment resistance value preserved
+    val data get() = accumulator.value
 
     fun accumulate(workoutData: WorkoutData){
         // set resistance for Segment on first value
-        if (workoutData.resistance != null && resistance == 0) resistance = workoutData.resistance
+        stabilized = resistance.update(workoutData.resistance!!)
         accumulator.accumulate(workoutData)
         endTime = Instant.now(clock)
     }
@@ -228,5 +216,30 @@ open class NumberAccumulator<T : Number> {
             else -> throw IllegalArgumentException("Unsupported type: ${min?.javaClass?.simpleName}")
         }
     }
+}
+
+class StableValue(private val clock: Clock, private val threshold: Duration = 10.seconds){
+    private var lastValue: Int = 0
+    private lateinit var lastTime: Instant
+
+    var stable = false
+
+    fun update(value: Int): Boolean {
+        if (!this::lastTime.isInitialized){
+            lastTime = Instant.now(clock)
+            lastValue = value
+        } else {
+            if (value == lastValue) {
+                stable = java.time.Duration.between(lastTime, Instant.now(clock)).toKotlinDuration() > threshold
+            } else {
+                lastTime = Instant.now(clock)
+                lastValue = value
+                stable = false
+            }
+        }
+
+        return stable
+    }
+
 }
 

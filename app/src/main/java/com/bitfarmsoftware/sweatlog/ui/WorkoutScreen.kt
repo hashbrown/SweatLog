@@ -23,12 +23,16 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -41,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.delay
 import timber.log.Timber
 
 
@@ -179,13 +184,16 @@ internal fun WorkoutScreen(
                         WorkoutDataCard("Resistance", uiState.logData.resistance)
                     }
                 }
-                Spacer(Modifier.size(16.dp))
+                Spacer(Modifier.size(48.dp))
                 Button(onClick = {finishWorkout()},
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
-                            .heightIn(min = 50.dp, max = 100.dp),
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                            .align(Alignment.CenterHorizontally)
+                            .heightIn(min = 64.dp, max = 100.dp)
+                            .widthIn(min = 180.dp, max = 250.dp),
                         shape = RoundedCornerShape(10.dp)
                 ) {
-                    Text(text = "Finish Workout")
+                    Text(text = "Finish Workout",
+                        style = MaterialTheme.typography.labelLarge)
                 }
 
             }
@@ -209,8 +217,9 @@ fun WorkoutDataCard(dataName: String,
 
     {
         Box(
-            modifier = Modifier.background(brush)
+            modifier = Modifier
                 .fillMaxWidth()
+                .background(brush)
         ) {
             Spacer(modifier = Modifier.height(16.dp))
             Text(
@@ -264,6 +273,27 @@ fun ZoneDataCard(dataName: String, dataValue: String) {
 
     WorkoutDataCard(dataName, currentZone.zone.toString(), backgroundBrush)
 }
+
+
+@Preview
+@Composable
+fun HeartRateInteractivePreview() {
+    var heartRate by remember { mutableStateOf(80f) }
+
+    Column {
+        Text(text = "Heart Rate: ${heartRate.toInt()} BPM",
+            color = Color.White)
+
+        ZoneDataCard("Heart Rate", heartRate.toInt().toString())
+
+        Slider(
+            value = heartRate,
+            onValueChange = { heartRate = it },
+            valueRange = 80f..180f
+        )
+    }
+}
+
 
 
 @Preview
@@ -331,17 +361,17 @@ fun zoneBackgroundBrush(dataValue: String, currentZone: WorkoutZone): Brush {
         .coerceIn(0f, 1f)
 
     // When in the middle 80% (between 10% and 90%), use a solid color.
-    if (zoneProgress in 0.25f..0.75f) {
+    if (zoneProgress in 0.20f..0.80f) {
         return SolidColor(currentZone.color)
     }
     // If the value is above 75% and there is a next zone, transition upward.
-    else if (zoneProgress > 0.75f && nextZone != null) {
+    else if (zoneProgress > 0.80f && nextZone != null) {
         // Compute a ratio (0 at 90%, 1 at 100%)
-        val upwardTargetRatio = ((zoneProgress - 0.75f) / 0.75f).coerceIn(0f, 1f)
+        val upwardTargetRatio = ((zoneProgress - 0.80f) / 0.80f).coerceIn(0f, 1f)
         val animatedUpRatio by animateFloatAsState(targetValue = upwardTargetRatio)
         // Here the split is computed so that when animatedUpRatio is 0 the full background is
         // currentZone.color, and when animatedUpRatio is 1, it becomes nextZone.color.
-        val split = 1f - (animatedUpRatio + 0.20f)
+        val split = 1f - (animatedUpRatio + 0.15f)
 
         return Brush.horizontalGradient(
             colorStops = arrayOf(
@@ -353,14 +383,14 @@ fun zoneBackgroundBrush(dataValue: String, currentZone: WorkoutZone): Brush {
         )
     }
     // If the value is below 25% and there is a previous zone, transition downward.
-    else if (zoneProgress < 0.25f && prevZone != null) {
+    else if (zoneProgress < 0.20f && prevZone != null) {
         // Compute a ratio (0 at 10%, 1 at 0)
-        val downwardTargetRatio = ((0.25f - zoneProgress) / 0.75f).coerceIn(0f, 1f)
+        val downwardTargetRatio = ((0.20f - zoneProgress) / 0.80f).coerceIn(0f, 1f)
         val animatedDownRatio by animateFloatAsState(targetValue = downwardTargetRatio)
         // For downward transition:
         // When animatedDownRatio is 0, the full background is currentZone.color.
         // When animatedDownRatio is 1, the full background becomes prevZone.color.
-        val split = animatedDownRatio + 0.20f
+        val split = animatedDownRatio + 0.15f
         return Brush.horizontalGradient(
             colorStops = arrayOf(
                 0.0f to prevZone.color,
